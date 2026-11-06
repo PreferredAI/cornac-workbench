@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "date": "2026-10-26",
+  "tests": 11,
+  "test_seconds": 1.132,
+  "runtime_oracle_combinations": 216,
+  "metric_oracle_tolerance": 1e-12,
+  "checked_behaviors": [
+    "real bidirectional resolver wins",
+    "injective SID/CCE/item identity",
+    "native ordering and original raw slots",
+    "empty invalid and repeated slots",
+    "exact group selection and deterministic ties",
+    "target-free scoring",
+    "group pagination",
+    "matched histories and resolver cohort filters",
+    "session replay without site packages",
+    "HTTP bootstrap/query/filter/group/export/replay/error"
+  ],
+  "http_runtime": "localhost integration passed outside sandbox after socket EPERM inside sandbox",
+  "dependencies": "Python standard library only at runtime",
+  "source_files": {
+    "workbench.py": "35088bca52b569ecf1db0f9944c99e167266af3191f0508880b50e7588a0d2e3",
+    "prepare_workbench.py": "f5a75b04ee302c287fba7e583259b37a026094c055afe675b6709fa14ffe873e",
+    "serve_workbench.py": "82d411307508342a7a719f2740b6e242d063e146d7177fc30d5d9902da38b340",
+    "test_workbench.py": "a84781721d03ff2d558233bba50675b6f093ae31c3fb9359378b2ead4c6ff782"
+  },
+  "bundle": {
+    "bundle_sha256": "0d2da71b27ea26866be6a6985724fe13d7a38cd029afc8901e59f0aa071df98c",
+    "compressed_bytes": 2481219,
+    "uncompressed_bytes": 6493433
+  },
+  "full_cohort_sasrec": "deferred; portable app uses explicitly selected 18-query slice",
+  "browser_validation": "pending frontend implementation"
+}

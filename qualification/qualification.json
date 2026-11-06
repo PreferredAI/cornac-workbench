@@ -1,0 +1,162 @@
+{
+  "status": "passed",
+  "date": "2026-10-26",
+  "universe_sha256": "de948ed206722e2a477327723f4260d2853f19ef5de3ca5797cea8bdce7d8c21",
+  "source_bundle": "papers/ecir2027-replicability/artifact-bundle",
+  "source_files": {
+    "data/beauty/resolver-inputs.npz": {
+      "sha256": "661044cfaa69de75646cd1d8144b08e2de43f0be0b96530a2c28fd9f1110a143",
+      "bytes": 22082557
+    },
+    "data/beauty/resolver-provenance.json": {
+      "sha256": "e7fa83d625a6a9b23c003807508970da7b0b32310514d4f8f649c06a3051557f",
+      "bytes": 448
+    },
+    "data/beauty/manifest.json": {
+      "sha256": "add865cf838ccfd9b0b6d738a2eb7cd3eb92ec0fe90fab6fd2d5cad0a2e49add",
+      "bytes": 36777
+    },
+    "data/beauty/letter-openai-2025/raw_predictions.npz": {
+      "sha256": "e468b6a178718b6808bf35608cd441b8acb4271a9fd5ec45242a589fe94e0ac0",
+      "bytes": 3549427
+    },
+    "data/beauty/letter-openai-2025/sid_catalog.npz": {
+      "sha256": "5731546e5e95c7962273e81658b780f9710e0592f0c6161f0c16492c0efac02a",
+      "bytes": 112187
+    },
+    "data/beauty/letter-openai-2025/per_query_metrics.npz": {
+      "sha256": "688cf47d012961479dac0615ed415993e7f5f87b318f1b59d656399e4b192260",
+      "bytes": 78883
+    },
+    "data/beauty/letter-openai-2025/report.json": {
+      "sha256": "bf2617e314c5a659958ade2306823464f0c983242131bf887a3ee0fc3417b0db",
+      "bytes": 2655
+    },
+    "data/beauty/tiger-openai-2025/raw_predictions.npz": {
+      "sha256": "0094f6546ec4fda1a6940b668c583bffb20a22ee54454a1a54ece44032d630e8",
+      "bytes": 9397466
+    },
+    "data/beauty/tiger-openai-2025/sid_catalog.npz": {
+      "sha256": "315060c50d1c14a8cb7de8c142a5659a971528f99154dcb6f9cba14083b0a8df",
+      "bytes": 145991
+    },
+    "data/beauty/tiger-openai-2025/per_query_metrics.npz": {
+      "sha256": "1eab617d3728dcad5cedc8e23b6249bb56ddcb1c7e89d988a4b4d871874ca9b6",
+      "bytes": 134187
+    },
+    "data/beauty/tiger-openai-2025/report.json": {
+      "sha256": "a8f88d79a4477bdd030b8744bbc52f564fcbb006310f858be1a6e9095e95188e",
+      "bytes": 3713
+    },
+    "data/beauty/letter-openai-2025/native_predictions.npz": {
+      "sha256": "b14210762306e85b9beaa6ee51ea9d8ce85a35b5a9df45bbc83d647e1674ca59",
+      "bytes": 3197574
+    }
+  },
+  "source_models": {
+    "letter-openai-2025": {
+      "catalog_hash": "61c8515e54c5b537543d08414035df26ca5822d697b8b0db418b6eae724abe22",
+      "items": 12068,
+      "queries_checked": 22363,
+      "collision_groups": 570,
+      "collided_items": 3421,
+      "max_group_size": 1643,
+      "ranking_contract": "stable score ordering with invalid-score -1000 sentinel",
+      "native_beams_per_query": 20
+    },
+    "tiger-openai-2025": {
+      "catalog_hash": "ec1bc9673326d3d8cf0e5b15bef85ef81029e1e56f10111cec3baf831e7cb1a5",
+      "items": 12068,
+      "queries_checked": 22363,
+      "collision_groups": 0,
+      "collided_items": 0,
+      "max_group_size": 1,
+      "ranking_contract": "native raw decoder slots unchanged",
+      "native_beams_per_query": 50
+    }
+  },
+  "resolver_inputs": {
+    "features": "raw ST5 aligned exactly by original ASIN; independent of model OpenAI tokenization features",
+    "events": 153776,
+    "training_arrays_equal_canonical_universe": true,
+    "source_features_equal_after_identity_join": true,
+    "tie_rule": "smallest global item index",
+    "history_scope": "training events only, repeats included"
+  },
+  "selection_categories": {
+    "neutral_evenly_spaced": [
+      0,
+      2032,
+      4065,
+      6098,
+      8131,
+      10164,
+      12197,
+      14230,
+      16263,
+      18296,
+      20329,
+      22362
+    ],
+    "sid_hit_popularity_miss": [
+      7,
+      30
+    ],
+    "popularity_hit_cosine_miss": [
+      210,
+      288
+    ],
+    "cosine_hit_popularity_miss": [
+      145,
+      453
+    ]
+  },
+  "selected_query_indices": [
+    0,
+    7,
+    30,
+    145,
+    210,
+    288,
+    453,
+    2032,
+    4065,
+    6098,
+    8131,
+    10164,
+    12197,
+    14230,
+    16263,
+    18296,
+    20329,
+    22362
+  ],
+  "selected_query_count": 18,
+  "oracle_tolerance": 1e-12,
+  "metric_contract": "SID / CCE group-expansion expectation / one-member popularity / one-member training-history cosine",
+  "sasrec": {
+    "checkpoint": "runs/www2027-demo-sasrec-beauty-2026-10-25/asset/selected.pt",
+    "checkpoint_sha256": "860cf2a74874d46f1f0b45106530a25e305290a7cdc8d151c6e34c370df7b77e",
+    "cpu_load_seconds": 0.06063259206712246,
+    "cpu_inference_seconds": 0.06546772178262472,
+    "queries": 18,
+    "full_cohort_export": false,
+    "max_history_length": 50
+  },
+  "release_status": "local research-source qualification; redistribution terms and release review pending",
+  "limitations": [
+    "Diagnostic examples intentionally selected; neutral sample is outcome-independent",
+    "Different recipes/context/beam budgets are visible; no aggregate superiority claim",
+    "Full 22,363-query SASRec export not performed"
+  ],
+  "output_files": {
+    "sasrec-slice.json": {
+      "sha256": "ca48c6f62a58044998b81cede921a4c7f1eea6a96a3b4bfd215f835bd4fd4cf6",
+      "bytes": 22541
+    },
+    "selected-oracle-metrics.json": {
+      "sha256": "fe4ffd7734183001423710cfb58abe35aa3bd55940624d333a296fad5fbe5f85",
+      "bytes": 17646
+    }
+  }
+}

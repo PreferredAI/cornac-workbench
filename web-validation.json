@@ -1,0 +1,202 @@
+{
+  "date": "2026-11-04T16:15:35.097Z",
+  "url": "http://127.0.0.1:8120",
+  "browser": "156.0.8078.4",
+  "browserPath": "Playwright Chromium; Browser plugin not available",
+  "viewports": [
+    "1536x1024",
+    "1024x768",
+    "390x844"
+  ],
+  "hardware": {
+    "platform": "linux",
+    "release": "5.14.0-687.48.1.el9_8.x86_64",
+    "cpu": "Intel(R) Xeon(R) Platinum 8168 CPU @ 2.70GHz",
+    "cores": 48,
+    "node": "v24.15.0"
+  },
+  "firstMeaningfulMs": 958.9990030000001,
+  "cleanLaunchMs": 383.91070500000023,
+  "interactionMs": {
+    "resolverSwitchToRenderedMember": 59.228505999999925,
+    "querySwitchToRenderedMember": 166.52481500000067
+  },
+  "latencyMs": {
+    "query": [
+      28.98247199999969,
+      15.985971000000063,
+      15.370323000001008,
+      15.393550000000687,
+      24.923023999999714,
+      16.008362999999008,
+      15.255177999999432,
+      14.906466000000364,
+      15.289862999999968,
+      15.265016999999716
+    ],
+    "group": [
+      11.256069999999454,
+      10.99281499999961,
+      10.968178999999509,
+      10.889705999999933,
+      10.750582999999097,
+      11.087271000000328,
+      10.966631999999663,
+      11.129666999999245,
+      10.980059999999867,
+      10.978001999999833
+    ],
+    "export": [
+      225.376717000001,
+      231.18225000000166,
+      221.57477500000095,
+      221.55413599999883,
+      221.1707779999997,
+      221.65340900000047,
+      232.00953100000152,
+      239.01953499999945,
+      216.7112670000024,
+      232.56959200000347
+    ]
+  },
+  "checks": [
+    {
+      "name": "page identity, meaningful content, no framework overlay",
+      "status": "passed"
+    },
+    {
+      "name": "local typography, ordered workflow and skip navigation",
+      "status": "passed"
+    },
+    {
+      "name": "guided presets synchronize model, query, cutoff and resolver",
+      "status": "passed"
+    },
+    {
+      "name": "API drawer copies displayed Python and closes by keyboard",
+      "status": "passed"
+    },
+    {
+      "name": "member search filters results, empty state and target jump clears search",
+      "status": "passed"
+    },
+    {
+      "name": "real cosine win, explicit items and SID/CCE references",
+      "status": "passed"
+    },
+    {
+      "name": "resolver changes selected member and native trace",
+      "status": "passed"
+    },
+    {
+      "name": "real group pagination and native-row selection",
+      "status": "passed"
+    },
+    {
+      "name": "opposite real resolver win on identical query",
+      "status": "passed"
+    },
+    {
+      "name": "SID-hit/item-miss task and live filters",
+      "status": "passed"
+    },
+    {
+      "name": "TIGER injective agreement, matched baseline and contexts",
+      "status": "passed"
+    },
+    {
+      "name": "cutoff controls update evaluated and visible output",
+      "status": "passed"
+    },
+    {
+      "name": "downloaded session independently replays through UI",
+      "status": "passed"
+    },
+    {
+      "name": "keyboard selection and full history disclosure",
+      "status": "passed"
+    },
+    {
+      "name": "desktop and mobile have no document overflow or blank UI",
+      "status": "passed"
+    },
+    {
+      "name": "console and framework health",
+      "status": "passed"
+    },
+    {
+      "name": "clean offline runtime without site packages or node_modules",
+      "status": "passed"
+    }
+  ],
+  "consoleErrors": [],
+  "externalRequests": [],
+  "walkthroughVideo": "runs/www2027-demo-remediation-2026-11-04/agent-z/web-qa/video/page@198a7e4d5326e1beec011a81d13bd51a.webm",
+  "scope": "18 selected diagnostic/neutral walkthrough queries; not a model-quality benchmark or participant usability study",
+  "files": {
+    "web/src/App.jsx": {
+      "bytes": 8032,
+      "sha256": "633bc00b849f35b70ca84911c8b9233e259b25c9d208cc986105eec9a5010850"
+    },
+    "web/src/Journeys.jsx": {
+      "bytes": 17617,
+      "sha256": "d6112c067db29b74ad07930b7a011560032415535a510a230aea3c9950abcd19"
+    },
+    "web/src/api.js": {
+      "bytes": 3700,
+      "sha256": "20873b474be00181eb9f3dfb774a9ad2755bd9d8ba740975e7c38aa6c4834860"
+    },
+    "web/src/components.jsx": {
+      "bytes": 27749,
+      "sha256": "9588577d6e5e20673193218cbaf9a780307de357ac5150a03e2903ccdeac100c"
+    },
+    "web/src/journeys.css": {
+      "bytes": 8237,
+      "sha256": "fa19d55ed1346104260165644875e672c6bb458c07cd3bb9478806af019e6899"
+    },
+    "web/src/main.jsx": {
+      "bytes": 491,
+      "sha256": "b2948c39012c882b50138dc01e47b793157ce44ec7091c8be78491525eea8047"
+    },
+    "web/src/styles.css": {
+      "bytes": 26768,
+      "sha256": "1c46f06a392caf8b3a9d830a805b8d92d0df1966eca169c329291f8897675c85"
+    },
+    "web/index.html": {
+      "bytes": 658,
+      "sha256": "0c827cad6fe2f5d24092722317101e2575c2fe834d0f013aa6a685bac17df5b1"
+    },
+    "web/dist/index.html": {
+      "bytes": 757,
+      "sha256": "473c451ae231bf299be766769e422ff6fb17a44cb4ce4762573d577548d363cc"
+    },
+    "web/dist/assets/App-C2htieXz.js": {
+      "bytes": 31618,
+      "sha256": "9560551731ef84501e2326f54bbe1c35a11b7fde88183161bbce50d6d5abcac9"
+    },
+    "web/dist/assets/index--Z9WW7_3.css": {
+      "bytes": 30201,
+      "sha256": "4836fcadc5749e8f9ba390133953bf6996cad47ec99ec6993cda0da889acd18f"
+    },
+    "web/dist/assets/index-CxURo2gH.js": {
+      "bytes": 240228,
+      "sha256": "23c0d85a555520f8d3f1108118545d958e2ff5d44e3a3e6c3825b746fe17b850"
+    },
+    "workbench.py": {
+      "bytes": 13715,
+      "sha256": "14a04c6210e4b35fa4e44241255e5d4c2adfaa6e84b34c3bdc9070eb5f358179"
+    },
+    "serve_workbench.py": {
+      "bytes": 7426,
+      "sha256": "6379a885206584b991441befff189d34fc87fc18ce5cbe90ac0963dc0488a285"
+    },
+    "workbench-assets/bundle.json.gz": {
+      "bytes": 2481219,
+      "sha256": "0d2da71b27ea26866be6a6985724fe13d7a38cd029afc8901e59f0aa071df98c"
+    },
+    "web/tests/browser.mjs": {
+      "bytes": 17414,
+      "sha256": "5ef650490a71e3b76354fd044b3a147cef5645bc0683e198c8303b1c9a70ca57"
+    }
+  }
+}

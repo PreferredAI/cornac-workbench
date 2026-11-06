@@ -1,0 +1,51 @@
+{
+  "source_directory": "runs/paper-r-beauty-deadline-2026-10-12/heldout/tiger-st5-2025",
+  "source_hashes": {
+    "raw_predictions.npz": "b77f81e44c5bfa5f5ccd56d4d6f386d9e973e9d3e05a60fb054e85c9a3650ccf",
+    "sid_catalog.npz": "b65fcc417f8a303673bc6773b773f6373e0f1b7c2f08683dcade942ae61f58e7"
+  },
+  "canonical_universe": "runs/beauty-search-2026-09-14/matched_universe.json",
+  "universe_sha256": "de948ed206722e2a477327723f4260d2853f19ef5de3ca5797cea8bdce7d8c21",
+  "all_query_identity_checks": 22363,
+  "item_ids_sha256": "102204051c717278a5650cd2b6b123c5660a2f897bda24e91c4ac58da5e5165e",
+  "metadata_sha256": "c7977dc0e0ead14ac7df8c1c6de74da00e4bebfad87a0f0c5763d4c5bc9b53a0",
+  "metadata_fields_released": [
+    "asin",
+    "title"
+  ],
+  "reviewer_ids_and_review_text_released": false,
+  "license_status": "Research-source reuse; confirm original Amazon dataset terms and attribution before public distribution",
+  "evaluation_implementation": "cornac.eval_methods.sid_evaluation.evaluate_semantic_id_trace",
+  "evaluation_source_sha256": "a8630b26e8d6705fc9cfcd3facd8384a728b9c7fd7ef5cf74d88cb9531520b9d",
+  "extractor_sha256": "1c71d182e4bbfba8485f53d0ca6704c15d2220cbba83b64ba9aba6fb94437dc9",
+  "files": {
+    "item-ids.json": {
+      "bytes": 193091,
+      "sha256": "87b54ea11493050550ccbf8c560f1b0580f51a63f27c9700ad0961a80a3a9a74"
+    },
+    "sid_catalog.npz": {
+      "bytes": 147385,
+      "sha256": "b65fcc417f8a303673bc6773b773f6373e0f1b7c2f08683dcade942ae61f58e7"
+    },
+    "tiger-recipe.json": {
+      "bytes": 1617,
+      "sha256": "c4eda32413a7d28eb8adf812eda26e6638513273a4038d5985d076d23c894620"
+    },
+    "item-popularity.json": {
+      "bytes": 88587,
+      "sha256": "9e3afb4b130fd37c785aec3f0d8e8a432b50a8f33f5df40b4d2e33a78555618e"
+    },
+    "tiger-replay.json": {
+      "bytes": 104823,
+      "sha256": "587f9f22a0f6fba7e2210e1503c36282f5082e3467b46af45e459792c92ca103"
+    },
+    "titles.json": {
+      "bytes": 60249,
+      "sha256": "af397207d8df9a61574099b921b3f3aa23c4cbe75af7d44f149b0d41ffafe9c7"
+    },
+    "tiger-metrics.json": {
+      "bytes": 9337,
+      "sha256": "3ab6702bc395c91149ed5152cf99d673bda8e7ceb87ebbb7f1b087ec0eff8c1a"
+    }
+  }
+}

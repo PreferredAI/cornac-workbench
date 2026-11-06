@@ -1,0 +1,149 @@
+{
+  "date": "2026-11-04T16:15:16.475Z",
+  "url": "http://127.0.0.1:8110",
+  "browser": "156.0.8078.4",
+  "browserPath": "Playwright Chromium; Browser plugin not available",
+  "viewports": [
+    "1440x1000",
+    "1024x768",
+    "390x844"
+  ],
+  "hardware": {
+    "platform": "linux",
+    "release": "5.14.0-687.48.1.el9_8.x86_64",
+    "cpu": "Intel(R) Xeon(R) Platinum 8168 CPU @ 2.70GHz",
+    "cores": 48,
+    "node": "v24.15.0"
+  },
+  "firstRenderMs": 271.555975,
+  "choiceMs": 99.88712800000008,
+  "checks": [
+    {
+      "name": "static page identity, meaningful content, no framework overlay",
+      "status": "passed"
+    },
+    {
+      "name": "desktop comparison uses equal side-by-side columns with aligned product rows",
+      "status": "passed"
+    },
+    {
+      "name": "four resolver policies change products without changing shared history",
+      "status": "passed"
+    },
+    {
+      "name": "bucket inspection shows real alternatives and scores",
+      "status": "passed"
+    },
+    {
+      "name": "selecting an item updates both shelves and preserves fixed heldout metrics",
+      "status": "passed"
+    },
+    {
+      "name": "second choice reaches terminal recommendations and undo restores prior state",
+      "status": "passed"
+    },
+    {
+      "name": "download and replay restore the verified path and reject tampering",
+      "status": "passed"
+    },
+    {
+      "name": "changing story restarts and keyboard selection works",
+      "status": "passed"
+    },
+    {
+      "name": "changing story cancels an in-flight choice without mixing histories",
+      "status": "passed"
+    },
+    {
+      "name": "same-bucket alternatives are selectable and distinguish item-based context",
+      "status": "passed"
+    },
+    {
+      "name": "each qualified model pair restarts and loads its own metric evidence",
+      "status": "passed"
+    },
+    {
+      "name": "a newly trained BERT4Rec/TIGER journey saves and replays on the generic provenance schema",
+      "status": "passed"
+    },
+    {
+      "name": "desktop, tablet and mobile have no horizontal overflow",
+      "status": "passed"
+    },
+    {
+      "name": "no inference API, external request, or console error",
+      "status": "passed"
+    }
+  ],
+  "consoleErrors": [],
+  "externalRequests": [],
+  "pairs": [
+    "sasrec-letter",
+    "sasrec-rpg",
+    "sasrec-diffgrm",
+    "sasrec-tiger",
+    "bert-mlm-letter",
+    "bert-mlm-rpg",
+    "bert-mlm-diffgrm",
+    "bert-mlm-tiger"
+  ],
+  "files": {
+    "web/src/Journeys.jsx": {
+      "bytes": 17617,
+      "sha256": "d6112c067db29b74ad07930b7a011560032415535a510a230aea3c9950abcd19"
+    },
+    "web/src/journeys.css": {
+      "bytes": 8237,
+      "sha256": "fa19d55ed1346104260165644875e672c6bb458c07cd3bb9478806af019e6899"
+    },
+    "web/src/main.jsx": {
+      "bytes": 491,
+      "sha256": "b2948c39012c882b50138dc01e47b793157ce44ec7091c8be78491525eea8047"
+    },
+    "web/index.html": {
+      "bytes": 658,
+      "sha256": "0c827cad6fe2f5d24092722317101e2575c2fe834d0f013aa6a685bac17df5b1"
+    },
+    "web/dist/index.html": {
+      "bytes": 757,
+      "sha256": "473c451ae231bf299be766769e422ff6fb17a44cb4ce4762573d577548d363cc"
+    },
+    "web/dist/assets/App-C2htieXz.js": {
+      "bytes": 31618,
+      "sha256": "9560551731ef84501e2326f54bbe1c35a11b7fde88183161bbce50d6d5abcac9"
+    },
+    "web/dist/assets/index--Z9WW7_3.css": {
+      "bytes": 30201,
+      "sha256": "4836fcadc5749e8f9ba390133953bf6996cad47ec99ec6993cda0da889acd18f"
+    },
+    "web/dist/assets/index-CxURo2gH.js": {
+      "bytes": 240228,
+      "sha256": "23c0d85a555520f8d3f1108118545d958e2ff5d44e3a3e6c3825b746fe17b850"
+    },
+    "web/public/journeys/manifest.json": {
+      "bytes": 14748,
+      "sha256": "f49c1f2fd1ccb2f78f698e8705773a0da7402086c9964d75fb27196cec4d2f39"
+    },
+    "web/dist/journeys/manifest.json": {
+      "bytes": 14748,
+      "sha256": "f49c1f2fd1ccb2f78f698e8705773a0da7402086c9964d75fb27196cec4d2f39"
+    },
+    "figures/journeys-desktop.png": {
+      "bytes": 171175,
+      "sha256": "62a45575fa3982659d3f54caa106a0c0c37537ca6b6c25db40430ad260a7bf30"
+    },
+    "figures/journeys-desktop-bert-mlm.png": {
+      "bytes": 172816,
+      "sha256": "fbb37eb49e8dd3f29ae47e5d414841e700cb89f7bcf749723c2b6ff6aa4d048a"
+    },
+    "figures/journeys-mobile.png": {
+      "bytes": 133045,
+      "sha256": "05c5d065993cc4b8780809a3783ed48d7535cf02a5db06923a5f5517ad1eb250"
+    },
+    "figures/journeys-mobile-viewport.png": {
+      "bytes": 47935,
+      "sha256": "b387b693245d2a8ea34ac28efce7b08e91209c2901d0ea2f6051dc46fadb3803"
+    }
+  },
+  "scope": "Eight prepared Beauty model pairs served as static files; scripted checks, not a model-quality benchmark or participant usability study"
+}

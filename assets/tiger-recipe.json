@@ -1,0 +1,56 @@
+{
+  "attribution": "Existing ECIR'27 under-review study artifact, reused as prepared demo replay",
+  "recipe": {
+    "preset": "paischer_beauty",
+    "n_epochs": 100,
+    "val_eval_every": 5,
+    "val_sample": 2000,
+    "n_beams": 50,
+    "seeds": [
+      2025,
+      2026,
+      2027
+    ],
+    "selection": "fixed published-derived preset, sampled validation NDCG@10 checkpoint; no test selection",
+    "fresh_tokenizer_each_seed": true
+  },
+  "model_config_base": {
+    "tokenizer": "rqvae",
+    "feature_standardize": true,
+    "rqvae_hidden_dims": [
+      768,
+      512,
+      256
+    ],
+    "rqvae_latent_dim": 128,
+    "rqvae_n_epochs": 8000,
+    "rqvae_batch_size": 2048,
+    "rqvae_weight_decay": 0.1,
+    "num_enc_layers": 6,
+    "num_dec_layers": 6,
+    "dropout": 0.2,
+    "learning_rate": 0.0003,
+    "lr_schedule": "cosine",
+    "warmup_steps": 10000,
+    "weight_decay": 0.035,
+    "batch_size": 64,
+    "n_beams": 30,
+    "model_selection": "best",
+    "val_metric": "ndcg",
+    "val_k": 10,
+    "n_epochs": 100,
+    "val_eval_every": 1,
+    "val_sample": null,
+    "device": "cuda",
+    "seed": 2024,
+    "verbose": false
+  },
+  "effective_seed": 2025,
+  "effective_heldout_beams": 50,
+  "selection": "fixed preset; sampled validation NDCG@10; no test selection",
+  "checkpoint_sha256": "2b847bb9f4f80701154fd9f92dcca63a83d0fda0d0c88be2f3a09fba1c87dfa8",
+  "catalog_reload_exact": true,
+  "score_reload_close": true,
+  "fit_study_sha256": "18d74881deef5c8d36eaadbeb02bd0409ba1e10aafed2059089841b2628f8437",
+  "fit_result_sha256": "c465a1565560c25807273b45525ce0c18df7e9886b24a9de426b28e1042e4a8b"
+}
