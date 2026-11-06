@@ -1,7 +1,8 @@
-name: Deploy workbench to Cloudflare Pages
+name: Deploy workbench to Cloudflare
 
-# Same pattern as PreferredAI.github.io (.github/workflows/nextjs.yml): build the
-# static site in one job, then deploy the uploaded build with Wrangler.
+# Same pattern as PreferredAI.github.io: build the static site in one job, then
+# deploy the uploaded build with Wrangler (as in its deploy-admin.yml) to the
+# cornac-workbench Worker, which serves web/dist as static assets (web/wrangler.jsonc).
 
 on:
   push:
@@ -55,11 +56,13 @@ jobs:
         working-directory: web
         run: npm run build
 
-      - name: Upload static build
+      - name: Upload static build and Worker config
         uses: actions/upload-artifact@v7
         with:
           name: static-build
-          path: web/dist
+          path: |
+            web/dist
+            web/wrangler.jsonc
           if-no-files-found: error
           retention-days: 3
 
@@ -70,27 +73,26 @@ jobs:
       name: workbench-production
       url: https://cornac-workbench.preferred.ai
     steps:
-      - name: Download static build
+      - name: Download static build and Worker config
         uses: actions/download-artifact@v8
         with:
           name: static-build
-          path: dist
+          path: site
 
-      - name: Check Cloudflare Pages limits
+      - name: Check static asset limits
         shell: bash
         run: |
           set -euo pipefail
-          test ! -e dist/_worker.js
-          test ! -e dist/_routes.json
-          test ! -d dist/functions
-          test -z "$(find dist -type l -print -quit)"
-          file_count="$(find dist -type f | wc -l | tr -d ' ')"
+          test -f site/wrangler.jsonc
+          test ! -e site/dist/_worker.js
+          test -z "$(find site/dist -type l -print -quit)"
+          file_count="$(find site/dist -type f | wc -l | tr -d ' ')"
           echo "Files: $file_count"
           test "$file_count" -le 20000
           while IFS= read -r file; do
             size="$(stat -c '%s' "$file")"
             test "$size" -le 26214400
-          done < <(find dist -type f)
+          done < <(find site/dist -type f)
 
       - name: Skip a superseded automatic deployment
         if: github.event_name == 'push'
@@ -109,15 +111,16 @@ jobs:
             echo "Skipping superseded revision $EXPECTED_SHA; main is $current_sha." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         if: github.event_name == 'workflow_dispatch' || steps.freshness.outputs.current == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: site
           packageManager: npm
           wranglerVersion: 4.124.0
-          command: pages deploy ./dist --project-name=cornac-workbench --branch=main --commit-hash=${{ needs.build.outputs.site_sha }}
+          command: deploy --config wrangler.jsonc --message "${{ needs.build.outputs.site_sha }}"
 
       - name: Smoke-test production
         if: github.event_name == 'workflow_dispatch' || steps.freshness.outputs.current == 'true'

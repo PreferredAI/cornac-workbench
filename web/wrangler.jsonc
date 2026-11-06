@@ -1,0 +1,10 @@
+// Cloudflare Worker that serves the built site as static files (no server code).
+// Deployed by .github/workflows/deploy.yml. The custom domain
+// cornac-workbench.preferred.ai is attached to this Worker in the Cloudflare dashboard.
+{
+  "name": "cornac-workbench",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
