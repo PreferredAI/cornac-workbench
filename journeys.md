@@ -167,8 +167,12 @@ for the canonical masked objective. The campaign followed these rules:
    pairs starts a fresh journey. Never substitute existing unrelated outputs
    for a newly chosen history.
 
-Public data/artifact redistribution review and release packaging remain
-pending. No external deployment or public publication has been performed.
+Release (6 November 2026): the companion repository
+`PreferredAI/cornac-workbench` is public, with code under Apache-2.0 and the
+Amazon-derived data under the original dataset's terms; its
+`.github/workflows/deploy.yml` deploys the site to `https://cornac-workbench.preferred.ai`.
+The manifest's `release_status` string was written at export time and is kept
+as is, because the bundle hashes cover it.
 
 ### Capped offline model campaign, 3 November 2026
 

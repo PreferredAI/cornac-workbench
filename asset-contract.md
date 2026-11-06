@@ -3,8 +3,9 @@
 Verified 26 October 2026 for the authors' master plan, milestone
 M1. The qualification script (`runs/www2027-demo-qualification-2026-10-26/qualify.py`
 in the Cornac research tree) and [machine-readable receipt](qualification/qualification.json)
-preserve the exact inputs, hashes, selected cases and numerical checks. This is
-local research-source qualification, not a public redistribution claim.
+preserve the exact inputs, hashes, selected cases and numerical checks. The
+assets are published in the companion repository: code under Apache-2.0, and
+the Amazon-derived data under the original dataset's terms (see its README).
 
 ## Selected source contract
 
