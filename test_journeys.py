@@ -102,7 +102,24 @@ class PreparedGraphTests(unittest.TestCase):
                          ["sasrec-letter", "sasrec-rpg", "sasrec-diffgrm", "sasrec-tiger",
                           "bert-mlm-letter", "bert-mlm-rpg", "bert-mlm-diffgrm", "bert-mlm-tiger"])
         self.assertEqual(self.manifest["pending_models"], [])
-        self.assertEqual(self.manifest["totals"], {"pairs": 8, "states": 3470, "transitions": 3454})
+        self.assertEqual(self.manifest["totals"], {"pairs": 8, "states": 9627, "transitions": 9579})
+
+    def test_every_pair_starts_from_the_same_six_histories(self):
+        seeds = self.pair["seeds"]
+        self.assertEqual(len(seeds), 6)
+        self.assertEqual([seed["query_index"] for seed in seeds[:2]], [145, 210])
+        for pair in self.manifest["pairs"]:
+            self.assertEqual(pair["seeds"], seeds)
+            self.assertEqual(pair["validation"]["roots"], 6)
+        for seed in seeds:
+            self.assertEqual(seed["id"], history_id(self.states[seed["id"]]["history"]))
+
+    def test_catalog_lists_exactly_the_items_the_states_show(self):
+        from prepare_journeys import trimmed_catalog
+        catalog = json.loads((self.root / "catalog.json").read_text())
+        shown = trimmed_catalog(self.root, {str(item): None for item in range(12068)})
+        self.assertEqual(set(catalog), set(shown))
+        self.assertEqual(self.manifest["catalog_items"], len(catalog))
 
     def test_generic_per_pair_provenance_and_no_bundle_level_mixing(self):
         from prepare_journeys import PROVENANCE_KEYS

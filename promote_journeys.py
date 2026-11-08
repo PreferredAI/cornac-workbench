@@ -22,10 +22,6 @@ EXPECTED = ("sasrec-letter", "sasrec-rpg", "sasrec-diffgrm", "sasrec-tiger",
 PENDING = "graph_and_metric_gates_passed_browser_review_pending"
 PROMOTED = "promoted_public_assets_replaced_browser_review_pending"
 PASSED = "browser_review_passed_public_assets_replaced"
-# Export CPU seconds were never stored per pair. Schema-1 pairs: journeys.md (3 Nov 2026);
-# the rest: "status": "passed" lines of logs/slurm/beauty-model-finalize-350880.out.
-SECONDS = {"sasrec-letter": 172.5, "sasrec-rpg": 99.8, "sasrec-diffgrm": 341.9, "sasrec-tiger": 1611.3,
-           "bert-mlm-letter": 1151.0, "bert-mlm-rpg": 107.8, "bert-mlm-diffgrm": 450.9, "bert-mlm-tiger": 105.1}
 
 
 def relative(path):
@@ -43,7 +39,6 @@ def promote(args, ledger):
             migrated_pairs.append(pair["id"])
         pair["provenance"] = migrate_legacy_provenance(pair["provenance"])
         pair["qualification"] = migrate_legacy_qualification(pair["qualification"])
-        pair["seconds"] = SECONDS[pair["id"]]
     benchmarks = {}
     for name in [pair["benchmark"] for pair in original["pairs"]] + ["benchmark.json"]:
         saved = json.loads((candidate / name).read_text())

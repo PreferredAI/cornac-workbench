@@ -1,14 +1,28 @@
 # Cornac Workbench
 
-The default route is now the static **Beauty Recommendation Journeys** screen:
-eight real model pairs (SASRec or BERT4Rec (MLM), each with LETTER, RPG, DiffGRM
-or TIGER; 3,470 prepared states), two choice steps, four resolver strategies,
-bucket inspection, fixed full-cohort Cornac 3.1 metrics, and verified
-save/replay. See [journey preparation and contracts](../journeys.md). Serve
-`dist` with any static host for this experience; it does not call the Python API.
-`npm run test:journeys` checks it against a plain static server on port 8110 and
-writes [its receipt](../journeys-validation.json) and `../figures/journeys-*.png`;
-`node scripts/capture-figure.mjs` captures the paper figure.
+The default route is the static **Beauty Recommendation Journeys** screen. It
+shows one of six real Amazon Beauty purchase histories with product photos and
+asks what the shopper bought next; after a guess, or `Just show me`, the real
+next purchase is marked wherever a recommendation list contains it. The visitor
+then makes up to two choices while a sequential and a Semantic-ID model
+recommend side by side: eight model pairs (SASRec or BERT4Rec (MLM), each with
+LETTER, RPG, DiffGRM or TIGER; 9,627 prepared states), four resolver strategies,
+bucket inspection with the product categories inside a code, a count of the new
+products in each list after every choice, the same-SID example "Two products,
+one code." on the LETTER pairs, a summary after the second choice, and
+save/replay. `Details` shows the technical labels, a Recall@5 chart of all eight
+pairs and the fixed full-cohort Cornac 3.1 metrics. The journey is kept in the
+URL hash; `Share` shows the link as a QR code (the `qrcode` package, loaded only
+when the panel opens), and `#k=1` turns on kiosk mode, which plays a captioned
+loop after 60 s without input. Photos and short names are read from
+`public/journeys/media.json` and `public/journeys/thumbs/` (2,407 WebP files, at
+most 320 px on a side), written by [prepare_media.py](../prepare_media.py); if
+`media.json` is missing, the page skips the guess and shows placeholders. See
+[journey preparation](../journeys.md). Serve `dist` with any static host for
+this experience; it does not call the Python API. `npm run test:journeys` runs
+28 browser checks against a plain static server on port 8110 and writes [the
+results](../journeys-validation.json) and `../figures/journeys-*.png`; `node
+scripts/capture-figure.mjs` captures the paper figure.
 
 The diagnostic interface described below is retained at `?view=diagnostics`
 and uses the local Python API.

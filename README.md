@@ -13,7 +13,7 @@
 ![GitHub License](https://img.shields.io/github/license/PreferredAI/cornac-workbench?color=yellow)
 
 ![The workbench on an Amazon Beauty purchase history](figures/journeys-paper-desktop.png)
-<p align="center"><i>SASRec (left) and LETTER (right) recommending from the same 16-item Amazon Beauty history</i></p>
+<p align="center"><i>SASRec (left) and LETTER (right) on the same 16-item Amazon Beauty history, after the shopper's real next purchase has been revealed: LETTER lists it first, SASRec does not list it</i></p>
 
 
 ## What the workbench shows
@@ -22,21 +22,24 @@ A Semantic-ID model gives each item a short sequence of discrete codes, its SID,
 
 The workbench makes this visible on real purchase histories:
 
-1. **Pick a model pair and a starting history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The two starting histories are taken from the Amazon Beauty test set.
+1. **Guess the next purchase.** The page shows a shopper's history with product photos and two lists of five recommendations, one from a sequential model and one from a Semantic-ID model. You tap the product you think the shopper bought next, or *Just show me*. The real next purchase, held out from the Amazon Beauty test set, is then marked wherever a list contains it, and one line says which model ranked it where. For the default history, LETTER lists it first and SASRec does not list it.
+2. **Choose a product.** Choosing a product from either list adds it to the history, and both models recommend again. A line counts the new products in each list, and *Why?* explains the difference. A journey allows up to two choices; *Undo* and *Restart* go back, and a summary follows the second choice.
+3. **Two products, one SID.** With SASRec and LETTER on the default history, the page offers two products whose SID is shared by 1,643 products. Whichever you choose, LETTER generates the same SIDs as before, while SASRec replaces all five of its products.
+4. **Change the model pair or the history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The six starting histories are taken from the Amazon Beauty test set: two were chosen by hand, and four by a script so that the real next purchase is in the first list of LETTER only, of SASRec only, of both, or of neither.
 
    | Sequential models | Semantic-ID models |
    | :---------------: | :----------------: |
    | SASRec, BERT4Rec  | LETTER, TIGER, RPG, DiffGRM |
 
-2. **Choose a product.** Choosing a product from either list adds it to the history, and both models recommend again. A journey allows up to two choices; *Undo* and *Restart* go back.
-3. **Change how a SID becomes a product.** The Semantic-ID model's list depends on a policy:
+5. **Change how a SID becomes a product.** The Semantic-ID model's list depends on a policy:
    - *One per SID*: one product for each generated SID, chosen either by training popularity or by cosine similarity to the history (Sentence-T5 embeddings).
    - *Expand buckets*: all products of each SID in turn, ordered by the same two scores. A large bucket can fill the whole list.
 
-   Each SID links to its *bucket*, the list of products that share it.
-4. **Save and replay.** *Save journey* downloads the session as a JSON file. *Replay journey* loads it again and rejects a file whose choices or provenance do not match the precomputed states.
+   Each SID links to its *bucket*, the list of products that share it. For a large bucket the page also counts the products by category; the 1,643-product SID above, for example, holds 573 skin-care, 366 hair-care and 353 makeup products, among others. In the TIGER and RPG pairs every bucket shown holds a single product, so there is no policy menu.
+6. **Save and replay.** *Save journey* downloads the session as a JSON file. *Replay journey* loads it again and rejects a file whose choices or provenance do not match the precomputed states.
+7. **Share, or leave it running at a booth.** The address bar keeps the current journey, so reloading or sending the link reopens it. *Share* shows the link as a QR code. Kiosk mode is `#k=1` at the end of the address (for example <https://cornac-workbench.preferred.ai/#k=1>): after 60 seconds without input, the page plays a captioned walkthrough until someone touches the screen or presses a key.
 
-Below the lists, each pair shows Recall@5 and NDCG@5 on all 22,363 held-out test queries: item-level values for both models, and SID-level and collision-corrected (CCE) values for the Semantic-ID model.
+The *Details* button shows the technical labels, a Recall@5 chart of all eight pairs, and, for each pair, Recall@5 and NDCG@5 on all 22,363 held-out test queries: item-level values for both models, and SID-level and collision-corrected (CCE) values for the Semantic-ID model.
 
 
 ## Run it locally
@@ -51,7 +54,7 @@ npm run build
 python3 -m http.server 8110 --directory dist
 ```
 
-Then open <http://127.0.0.1:8110/>. The build uses absolute paths (`/assets/`, `/journeys/`), so it must be served at the root of a host.
+Then open <http://127.0.0.1:8110/>. The build uses absolute paths (`/assets/`, `/journeys/`), so it must be served at the root of a host. Python 3.12's `http.server` sends the WebP product photos without an image MIME type; Chromium displays them anyway.
 
 ### Diagnostic view
 
@@ -68,8 +71,10 @@ Then open <http://127.0.0.1:8080/?view=diagnostics>. The server's API is describ
 
 Cornac trains and evaluates the models. This repository turns their outputs into the workbench in two steps:
 
-1. **Export.** [`prepare_journeys.py`](prepare_journeys.py) loads the trained Cornac models, runs them on every state that a journey can reach (two starting histories, up to two choices, eight model pairs: 3,470 states in total), and writes the results as JSON: a `manifest.json` plus one folder of states per pair. [`journeys.py`](journeys.py) holds the SID-to-product policies and the checks on the journey graph.
-2. **View.** The React application in [`web/`](web) reads these files and runs no model. The files used by the live demo are in [`web/public/journeys/`](web/public/journeys) (about 20 MB).
+1. **Export.** [`prepare_journeys.py`](prepare_journeys.py) loads the trained Cornac models, runs them on every state that a journey can reach (six starting histories, up to two choices, eight model pairs: 9,627 states in total), and writes the results as JSON: a `manifest.json`, a `catalog.json` of the 2,408 products that the journeys show, and one folder of states per pair. The starting histories are listed in [`journey-seeds.json`](journey-seeds.json); [`select_seeds.py`](select_seeds.py) chose the four after the first two. [`journeys.py`](journeys.py) holds the SID-to-product policies and the checks on the journey graph.
+2. **View.** The React application in [`web/`](web) reads these files and runs no model. The files used by the live demo are in [`web/public/journeys/`](web/public/journeys) (about 64.5 MB, of which 15.0 MB are product photos).
+
+Product photos and short names are added afterwards by [`prepare_media.py`](prepare_media.py). It reads the product image links, brands, categories, and prices from the Amazon Beauty 2014 metadata for the 2,408 products that appear in the journeys, and writes 320-pixel WebP thumbnails to `web/public/journeys/thumbs/` and the names, together with the product categories in each SID bucket, to `web/public/journeys/media.json`. It changes none of the exported files. [`promote_journeys.py`](promote_journeys.py) replaces `web/public/journeys/` as a whole, so `prepare_media.py` must be run again after a new export is promoted.
 
 The format of the exported files is described in [journeys.md](journeys.md).
 
@@ -79,7 +84,8 @@ The format of the exported files is described in [journeys.md](journeys.md).
 | Path | Contents |
 | :--- | :--- |
 | `web/` | React application (`web/src/`), browser tests (`web/tests/`), exported journeys (`web/public/journeys/`), and interface design notes (`web/design/`) |
-| `journeys.py`, `prepare_journeys.py`, `promote_journeys.py`, `journeys.md` | Journey export, the checks an export must pass before it replaces the published one, and the export format |
+| `journeys.py`, `prepare_journeys.py`, `select_seeds.py`, `journey-seeds.json`, `promote_journeys.py`, `journeys.md` | Journey export, the starting histories, the checks an export must pass before it replaces the published one, and the export format |
+| `prepare_media.py` | Product photos and short names (`web/public/journeys/thumbs/`, `media.json`) |
 | `fit_*_asset.py`, `run_*_grid.py`, `finalize_model_campaign.py`, `sasrec_asset.py`, `sasrec-beauty.sbatch`, `asset-run.md` | Training and model selection for BERT4Rec, TIGER, and SASRec |
 | `assets/`, `prepare_replay.py`, `prepare_sasrec_replay.py` | Model settings, metrics, and inputs used by the training and diagnostic scripts |
 | `workbench.py`, `serve_workbench.py`, `prepare_workbench.py`, `workbench-assets/`, `workbench-api.md` | Diagnostic view and its data |
@@ -97,12 +103,12 @@ pip install "cornac>=3.1"   # one journey test compares against Cornac's evaluat
 python3 -m unittest test_journeys test_workbench -v
 ```
 
-This runs 15 journey tests and 11 diagnostic-view tests. The other tests need only the standard library. The diagnostic view's metrics are compared with Cornac's evaluator on 216 configurations ([`qualification/selected-oracle-metrics.json`](qualification/selected-oracle-metrics.json)).
+This runs 17 journey tests and 11 diagnostic-view tests. The other tests need only the standard library. The diagnostic view's metrics are compared with Cornac's evaluator on 216 configurations ([`qualification/selected-oracle-metrics.json`](qualification/selected-oracle-metrics.json)).
 
 Browser tests use [Playwright](https://playwright.dev/) with Chromium (`npx playwright install chromium` once). From `web/`:
 
 ```bash
-npm run test:journeys   # 14 checks; needs the static server on port 8110
+npm run test:journeys   # 28 checks; needs the static server on port 8110
 npm run test:browser    # 17 checks; needs serve_workbench.py on port 8080
 ```
 
@@ -147,4 +153,4 @@ The workbench is described in *Cornac 3.0: An Open-Source Framework and Interact
 
 ## License
 
-The code is released under the [Apache License 2.0](LICENSE), as is Cornac. The exported journeys, `assets/`, `workbench-assets/`, and `qualification/` contain product titles, item indices, and interaction sequences derived from the Amazon Review Data (2014) Beauty 5-core subset (McAuley *et al.*). These data remain subject to that dataset's terms.
+The code is released under the [Apache License 2.0](LICENSE), as is Cornac. The exported journeys, `assets/`, `workbench-assets/`, and `qualification/` contain product titles, item indices, and interaction sequences derived from the Amazon Review Data (2014) Beauty 5-core subset (McAuley *et al.*). The thumbnails in `web/public/journeys/thumbs/` are reduced copies of the product images linked from that dataset's metadata. These data and images remain subject to that dataset's terms.

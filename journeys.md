@@ -1,14 +1,16 @@
 # Beauty Recommendation Journeys
 
 Implemented 3 November 2026 in the existing WWW demo scope; all eight model
-pairs were promoted to the static site on 4 November 2026. The release sections
+pairs were promoted to the static site on 4 November 2026. On 9 November they
+were exported again with six starting histories instead of two and a catalog
+trimmed to the items that the states show. The release sections
 remain Cornac 2.0 sequential and Cornac 3.0/3.1 generative recommendation;
 the primary interaction now follows attendee-selected products.
 
 ## Runtime and preparation
 
 Build `web/` with `npm run build`, then serve `web/dist` on any static host.
-The journey makes only same-origin JSON/font/script requests and requires no
+The journey makes only same-origin JSON/font/script/image requests and requires no
 inference service, GPU, model checkpoint, or Python runtime. For example:
 
 ```bash
@@ -33,36 +35,36 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=2 sbatch --job-name=journey-export \
 BERT4Rec (MLM) and TIGER exports also take `--traditional-checkpoint` and
 `--sid-checkpoint` from `runs/www2027-demo-beauty-models-2026-11-03/selection.json`.
 This performs **no training**. It hashes and reloads existing checkpoints,
-verifies catalog alignment and reproduces qualified query 145/210 native paths
-and rankings before generating branches. The first export took 172.5 CPU
-seconds, including the full-cohort evaluation. Each branch receives
+checks catalog alignment, and reproduces the stored native paths of all six
+starting histories, and SASRec's stored top-20 ranking for queries 145 and 210,
+before generating branches. Each branch receives
 actual inference on its displayed history; identical LETTER semantic histories
 reuse identical native predictions. Exported metadata contains hashes rather
 than machine-specific checkpoint paths.
 
 Eight pairs ship, SASRec then BERT4Rec (MLM), each with LETTER, RPG, DiffGRM
 and TIGER in that display order (`TRADITIONAL_ORDER`, `SID_ORDER` in
-`prepare_journeys.py`). Every pair has the same two deliberately selected
-starting histories (queries 145 and 210), two choices per journey, and its own
-fixed full-cohort benchmark, qualification receipt and replay provenance.
-Pair switching resets the journey. States and transitions after deduplication,
-with export wall-clock seconds on CPU nodes (including the full-cohort
-evaluation):
+`prepare_journeys.py`). Every pair has the same six starting histories (see
+below), two choices per journey, and its own fixed full-cohort benchmark,
+qualification record and replay provenance. Pair switching resets the journey.
+States and transitions after deduplication, with the wall-clock seconds of the
+9 November export (one CPU job per pair on `carpet`, AMD EPYC 9654, 4 CPUs, under
+2 GB; the full-cohort benchmarks were reused rather than recomputed):
 
 | Pair | States / transitions | Export s |
 | --- | --- | --- |
-| `sasrec-letter` | 906 / 904 | 172.5 |
-| `sasrec-rpg` | 193 / 191 | 99.8 |
-| `sasrec-diffgrm` | 411 / 409 | 341.9 |
-| `sasrec-tiger` | 211 / 209 | 1,611.3 |
-| `bert-mlm-letter` | 924 / 922 | 1,151.0 |
-| `bert-mlm-rpg` | 199 / 197 | 107.8 |
-| `bert-mlm-diffgrm` | 424 / 422 | 450.9 |
-| `bert-mlm-tiger` | 202 / 200 | 105.1 |
-| **Total** | **3,470 / 3,454** | |
+| `sasrec-letter` | 2,534 / 2,528 | 70.8 |
+| `sasrec-rpg` | 512 / 506 | 20.5 |
+| `sasrec-diffgrm` | 1,086 / 1,080 | 613.9 |
+| `sasrec-tiger` | 561 / 555 | 43.6 |
+| `bert-mlm-letter` | 2,635 / 2,629 | 76.0 |
+| `bert-mlm-rpg` | 560 / 554 | 22.3 |
+| `bert-mlm-diffgrm` | 1,174 / 1,168 | 659.1 |
+| `bert-mlm-tiger` | 565 / 559 | 43.2 |
+| **Total** | **9,627 / 9,579** | **1,549.4** |
 
 Existing LETTER, RPG and DiffGRM checkpoints reproduce the stored native paths
-on queries 145/210. The newly trained TIGER finalist has no stored oracle, so it
+of all six starting histories. The newly trained TIGER finalist has no stored oracle, so it
 is compared against an independent weights-only reload; `sasrec-tiger` computed
 its fresh full-cohort native predictions once and `bert-mlm-tiger` reused them.
 Seconds are shared-node wall-clock observations, not a benchmark.
@@ -70,12 +72,134 @@ Every card from every strategy is selectable until the final screen. A graph
 validator checks exact history extension and complete edge coverage. States
 are fetched separately; immediate successors are prefetched and cached.
 
-The comparison uses equal-width desktop columns with five aligned product rows;
-columns stack below 760 px. Copy is limited to controls, a precomputed-output
-badge and the held-out metric distinction. Resolver/protocol explanations stay
-in expandable details; selection updates are announced to screen readers.
+The 9 November export ran `runs/www2027-demo-journeys-2026-11-09/export_pair.sbatch`
+once per pair (jobs 358947-358954, about 26 minutes of CPU time in total), each
+with `--skip-benchmark` into its own directory seeded with that pair's
+`benchmark.json`. `merge.py` in the same directory then copied the eight pairs into
+one candidate, wrote the combined manifest with `build_manifest`, the trimmed
+catalog and the top-level `benchmark.json`, validated every graph and wrote
+`candidate-qualification.json`. The same day, `promote_journeys.py --campaign
+runs/www2027-demo-journeys-2026-11-09 --candidate
+runs/www2027-demo-journeys-2026-11-09/candidate` replaced `web/public/journeys`
+(the previous bundle is in `runs/www2027-demo-journeys/public-backup-2026-11-09`),
+and `prepare_media.py` was run again. `catalog.json` now lists only the 2,408
+items that appear in some state of some pair; `catalog_items` in the manifest is
+its length. The dataset still has 12,068 items, and the benchmarks use all of
+them.
 
-## Resolution and metrics contract
+## Starting histories
+
+`journey-seeds.json` lists the six starting histories in display order;
+`prepare_journeys.py` reads it and takes each history and its real next purchase
+from the held-out cohort (`runs/beauty-search-2026-09-14/matched_universe.json`,
+`test[i]["items"]`: history `[:-1]`, next purchase `[-1]`). Queries 145 and 210
+come first with their earlier ids, labels and order; they were chosen by hand.
+`select_seeds.py` chose the other four: 8 to 20 purchases, at least 20 valid
+DiffGRM codes (so that every state after a choice still has five), a real next
+purchase with a photo that is not already in the history, and a different main
+category for each. Each fills one case of whether the real next purchase is on
+LETTER's starting list (one product per code, closest to the history) and on
+SASRec's top five. Query 7337 is left out because the DiffGRM checkpoint does not
+reproduce its stored beams.
+
+| Query | Label | Purchases | Real next purchase | SASRec | LETTER |
+| ---: | --- | ---: | --- | ---: | ---: |
+| 145 | Explore a beauty routine | 16 | item 2739, fine-liner brush | – | #1 |
+| 210 | Try a different direction | 7 | item 2993, dry shampoo | – | #4 |
+| 2574 | Skin care, 8 purchases | 8 | item 667, Olay microdermabrasion | – | #2 |
+| 21060 | Tools & accessories, 8 purchases | 8 | item 10732, nail stamp | #3 | – |
+| 21667 | Hair care, 9 purchases | 9 | item 1024, Nexxus conditioner | #2 | #5 |
+| 8564 | Fragrance, 11 purchases | 11 | item 3291, perfume | – | – |
+
+Ranks are on the starting lists of the SASRec + LETTER pair, with LETTER on one
+product per code, closest to the history. With the most popular product per
+code, LETTER does not list the query-145 brush; the other ranks are the same.
+
+The page opens with the question "A real shopper bought these 16 products.
+What did they buy next?" (the count follows the history), the last six purchases as photos (`All 16` shows the
+rest) and two lists of five products under the plain headings "Ranks products"
+and "Predicts codes", with the model names as small tags. The visitor taps a
+product as a guess or presses `Just show me`. The real next purchase (for
+example item 2739 for query 145) is then marked `They bought this` in
+whichever list contains it, and one line gives each model's rank for it, for
+example "LETTER had it at #1. SASRec didn't list it." Choose buttons appear
+only after this reveal; the real purchase's button reads `Follow the shopper`.
+After a choice, a line counts the new products in each list ("4 new on the
+left, 0 on the right."), cards are marked new or moved, and `Why?` adds at most
+two sentences. On the LETTER pairs, query 145 also shows the same-SID step "Two
+products, one code." with items 88 and 610. After the second choice, a summary
+card, `What happened`, lists the two picks and the changes and offers `Another
+model`, `Start over`, `Save journey` and `Get Cornac`. `Details` shows the
+resolver names, SID codes, resolver notes, a Recall@5 chart of all eight pairs
+and the held-out metric table; on RPG and TIGER pairs every bucket has one item,
+so the policy menu is replaced by "One product per code". In the bucket view, a
+code with more than 12 products also shows its product categories; LETTER's
+1,643-product code, for example, holds 573 skin care, 366 hair care, 353 makeup,
+159 bath and body, 106 tools and accessories and 86 fragrance products.
+
+The page keeps the journey in the URL hash
+(`#p=<pair>&h=<history>&s=<strategy>&t=<state>,<state>&r=1`), so a reload or a
+shared link restores it. `Share` opens a panel with a QR code of that link, the
+link itself and `Copy link`; the QR code is drawn by the `qrcode` package, which
+is loaded only when the panel opens. With `k=1` in the hash the page runs in
+kiosk mode for a booth screen: after 60 s without input it plays a captioned loop
+(the question, the reveal, `Follow the shopper`, a second choice, the summary)
+until someone touches the screen or presses a key. Reduced motion turns the loop
+off. The comparison uses equal-width desktop columns with
+five aligned product rows; columns stack below 760 px. The provenance of the
+data is stated once, in a footnote at the bottom of the page; selection updates
+are announced to screen readers.
+
+## Product photos and short names
+
+`prepare_media.py` adds a photo, a short name, the brand, the category path and
+the price for every item that appears in a state (history, either list or a
+bucket member): 2,408 items. It reads `manifest.json` and the state files under
+`web/public/journeys`, the titles of all 12,068 items from
+`workbench-assets/bundle.json.gz`, the 2014 Beauty metadata
+`.cache_data/amazon_review/meta_beauty_2014.json.gz` that `prepare_workbench.py`
+also reads (`imUrl`, `brand`, `categories`, `price`), and the real next
+purchases of all six histories from the held-out cohort (`matched_universe.json`). Each `imUrl` is downloaded from
+`m.media-amazon.com` with its size suffix removed (8 threads, 3 attempts; raw
+files are cached in `workbench-assets/images-raw/`, which is not shipped),
+placed on a white background, resized to a longest side of 320 px and saved as
+`web/public/journeys/thumbs/<item_index>.webp` (WebP quality 80). The script
+then writes `web/public/journeys/media.json` (schema 2: `items` keyed by item
+index with `image`, `width`, `height`, `short`, `brand`, `category`, `price`;
+`targets` maps each starting-history id to its real next purchase; `buckets`
+gives, for each SID model and each code that appears in a state, its size and
+up to six top-level categories with counts, the rest summed as "Other", with
+membership from the model's `sid_catalog.npz`) and the summary
+`media-validation.json`. A short name is the brand followed by the
+lower-cased last category, for example "Maybelline foundation", or the first
+five words of the decoded title when either is missing; it has at most 40
+characters. The current files (9 November 2026) hold 2,407 thumbnails
+(14,988,300 bytes) and a 552,719-byte `media.json`; item 3982 (`B0009R5B8A`)
+has only Amazon's "no image" picture and is shown with a placeholder.
+
+Run it from the checkout root on the login node, because compute nodes may have
+no outbound network, with the `cn` environment for Pillow (32 s on 9 November;
+`--limit N` processes only the first N items):
+
+```bash
+python papers/www2027-demo/prepare_media.py
+```
+
+The step changes none of the hashed files: `catalog.json`, `manifest.json`, the
+states and the benchmarks stay byte-identical. `promote_journeys.py` replaces
+`web/public/journeys` as a whole and so deletes `media.json` and `thumbs/`;
+re-run `prepare_media.py` after every promotion. Without `media.json` the page
+still works: it skips the guess and shows placeholders instead of photos.
+
+Python's `http.server` (3.12 on the cluster) sends `.webp` files as
+`application/octet-stream` because its MIME table has no entry for them.
+Chromium displays them anyway, and the browser tests check that every shelf
+image has decoded (`naturalWidth > 0`).
+
+The thumbnails are reduced copies of the product images linked from the 2014
+metadata and, like the product titles, are used under the dataset's terms.
+
+## Resolution and metrics
 
 All four strategies preserve complete-SID order after Cornac 3.1 compaction of
 invalid/repeated addresses. One-per-SID selects one bucket member. Expanded
@@ -108,7 +232,7 @@ saved history against prepared states. It is a replay of this prepared bundle,
 not a standalone model inference package. The legacy diagnostic export retains
 its independent Python replay workflow.
 
-## Manifest and provenance contract
+## Manifest and provenance
 
 `manifest.json` is schema 2, written by `build_manifest` in `prepare_journeys.py`.
 Top level: `schema_version, dataset, catalog_items, execution, max_choices,
@@ -127,25 +251,18 @@ contexts`. Its `<pair>/benchmark.json` carries the identical object. Replay
 compares a saved journey's provenance with its pair's by string equality
 (`Journeys.jsx`), so key order is part of the contract.
 
-Migration, 4 November. The first three pairs (`sasrec-letter`, `sasrec-rpg`,
-`sasrec-diffgrm`) were exported with `sasrec_checkpoint_sha256` and without
-`traditional_model` or the `traditional_checkpoint_qualified` receipt flag.
-`promote_journeys.py` migrated their manifest records, `<pair>/benchmark.json`
-and the top-level `benchmark.json` (`migrate_legacy_provenance`,
-`migrate_legacy_qualification`) instead of re-exporting them, so every state
-file is byte-identical. Exporter hashes were preserved, so three exporter
-generations are legitimate: `3a3c605d…` (the three migrated pairs), `e930eaa6…`
-(the five campaign pairs), and `f9e70d83…` (the current exporter, which
-assembled the manifest). `--skip-benchmark` compares the migrated saved
-provenance with the current one, ignoring only `exporter_sha256`, then
-re-stamps the saved benchmark. Job 352824 re-exported `sasrec-rpg` this way into
-scratch on another CPU host: provenance matched, benchmark metrics and the
-catalog were identical, and all 193 state ids, edges, items, orders, bucket
-sizes and resolver scores matched exactly. Only float32 model scores differed
-(SASRec by at most 1.0e-5, RPG native by 1.2e-6), so re-exports are not
-byte-identical across hosts; this is why the migration did not re-export. Journey files saved before the migration carry
-the old provenance and fail replay; the site was never deployed, so there is no
-compatibility shim.
+All eight pairs of the current bundle were exported on 9 November by one
+exporter (`exporter_sha256` `f122d9a2…`, which also assembled the manifest).
+`--skip-benchmark` compares the saved provenance with the current one, ignoring
+only `exporter_sha256`, then re-stamps the saved benchmark. The bundle of
+4 November mixed three exporter generations, because three schema-1 pairs had
+been migrated by `promote_journeys.py` (`migrate_legacy_provenance`,
+`migrate_legacy_qualification`) instead of being re-exported. Re-exports are not
+byte-identical across hosts: a test re-export of `sasrec-rpg` on another CPU host
+(job 352824) matched every state id, edge, item, order, bucket size and resolver
+score, but float32 model scores differed (SASRec by at most 1.0e-5, RPG native
+by 1.2e-6). Journey files saved from earlier builds, including the one on the
+public site on 9 November, carry the old provenance and fail replay.
 
 ## Model qualification and capped search
 
@@ -275,7 +392,9 @@ the receipt `journeys-validation.json` and
 `figures/journeys-{desktop,desktop-bert-mlm,mobile,mobile-viewport}.png`.
 `web/scripts/capture-figure.mjs` writes the paper figure
 `figures/journeys-paper-desktop.png` (1536 px wide, default SASRec/LETTER
-query-145 state, One per SID · History cosine) and prints its crop rows.
+query-145 state after `Just show me` with `Details` on, One per SID · History
+cosine) and prints its section rows; with `--og` it writes the 1200×630 link
+preview `web/public/og.png` instead.
 Downloads and failure screenshots stay in node-local scratch (`os.tmpdir()`;
 `JOURNEY_QA_DIR` overrides). Legacy API tests and `test:browser` exercise the
 preserved diagnostics through port 8080.
@@ -302,6 +421,36 @@ save and replay on the generic provenance schema. Static journey first
 meaningful render was 262.8 ms and one choice updated the UI in 96.1 ms on that
 node; these are scripted timings, not a usability study. The receipt records no
 console errors and no external or `/api/` requests. `web/dist/journeys/manifest.json`
-is byte-identical to the promoted public manifest (SHA-256 `f49c1f2f…`). The
-static journey payload is 20,103,292 bytes (`du -sb web/public/journeys`) before
+was byte-identical to the promoted public manifest (SHA-256 `f49c1f2f…`). The
+static journey payload was 20,103,292 bytes (`du -sb web/public/journeys`) before
 host compression. The diagnostic suite was not re-run in this step.
+
+Validation on 9 November, after the screen redesign: Slurm job 358869 built
+`web/dist` and passed 21 journey Chromium checks on compute node `carpet` (AMD
+EPYC 9654, Chromium 156.0.8078.4). Fourteen are the earlier checks updated for
+the new screen; the seven new ones cover the reveal, the guess, the count of new
+products (recomputed from the two lists), the product photos, the summary card,
+the `Details` switch, and the RPG pair's "One product per code". The receipt
+records no console errors, no external or `/api/` requests and no failed
+responses. Static journey first meaningful render was 136.6 ms and one choice
+updated the UI in 64.5 ms; these are scripted timings, not a usability study.
+The same job ran the Python tests (15 journey, 11 diagnostic; 26 passed). With
+`media.json` (297,380 bytes) and `thumbs/` (8,641,003 bytes), `du -sb
+web/public/journeys` was 29,041,677 bytes.
+
+Validation on 9 November, after the six-history export and the booth features:
+Slurm job 358980 (`runs/www2027-demo-journeys-2026-11-09/web_qa.sh`) built
+`web/dist` and passed 28 journey Chromium checks on `carpet` (AMD EPYC 9654,
+Chromium 156.0.8078.4). The seven new checks cover restoring a journey from the
+URL hash, the `Share` panel, the Recall@5 chart, the bucket categories, the kiosk
+loop, the same six histories on every pair, and a catalog entry for every shown
+item. `journeys-validation.json` records no console errors, no external or
+`/api/` requests and no failed responses. First render took 137.0 ms and one
+choice 68.3 ms; these are scripted timings, not a usability study. The same job
+ran the Python tests (17 journey, 11 diagnostic; 28 passed); the two new journey
+tests check that every pair starts from the same six histories and that the
+catalog lists exactly the items the states show. The paper figure is
+1536×2150 px; the paper keeps rows 74–1105, from the question to the end of the
+recommendations. `du -sb web/public/journeys` is 64,511,943 bytes in 12,046
+files: 49.5 MB of JSON, including `media.json`, and 14,990,707 bytes of
+thumbnails.

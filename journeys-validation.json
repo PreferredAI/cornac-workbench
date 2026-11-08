@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-04T16:15:16.475Z",
+  "date": "2026-11-08T19:00:51.668Z",
   "url": "http://127.0.0.1:8110",
   "browser": "156.0.8078.4",
   "browserPath": "Playwright Chromium; Browser plugin not available",
@@ -11,72 +11,129 @@
   "hardware": {
     "platform": "linux",
     "release": "5.14.0-687.48.1.el9_8.x86_64",
-    "cpu": "Intel(R) Xeon(R) Platinum 8168 CPU @ 2.70GHz",
-    "cores": 48,
+    "cpu": "AMD EPYC 9654 96-Core Processor",
+    "cores": 384,
     "node": "v24.15.0"
   },
-  "firstRenderMs": 271.555975,
-  "choiceMs": 99.88712800000008,
+  "firstRenderMs": 136.971766,
+  "choiceMs": 68.3075980000001,
   "checks": [
     {
-      "name": "static page identity, meaningful content, no framework overlay",
+      "name": "page loads with the question and two shelves of five",
       "status": "passed"
     },
     {
-      "name": "desktop comparison uses equal side-by-side columns with aligned product rows",
+      "name": "product photos load",
       "status": "passed"
     },
     {
-      "name": "four resolver policies change products without changing shared history",
+      "name": "reveal marks the real purchase and keeps both lists",
       "status": "passed"
     },
     {
-      "name": "bucket inspection shows real alternatives and scores",
+      "name": "Details shows the evaluation table",
       "status": "passed"
     },
     {
-      "name": "selecting an item updates both shelves and preserves fixed heldout metrics",
+      "name": "shelves sit side by side with aligned rows",
       "status": "passed"
     },
     {
-      "name": "second choice reaches terminal recommendations and undo restores prior state",
+      "name": "four item strategies change the right shelf, not the history",
       "status": "passed"
     },
     {
-      "name": "download and replay restore the verified path and reject tampering",
+      "name": "bucket inspector lists other products and scores",
       "status": "passed"
     },
     {
-      "name": "changing story restarts and keyboard selection works",
+      "name": "a choice updates both shelves and keeps the evaluation table",
       "status": "passed"
     },
     {
-      "name": "changing story cancels an in-flight choice without mixing histories",
+      "name": "change line matches a recount of both shelves",
       "status": "passed"
     },
     {
-      "name": "same-bucket alternatives are selectable and distinguish item-based context",
+      "name": "second choice ends the journey and Undo goes back",
       "status": "passed"
     },
     {
-      "name": "each qualified model pair restarts and loads its own metric evidence",
+      "name": "recap shows what happened and its actions work",
       "status": "passed"
     },
     {
-      "name": "a newly trained BERT4Rec/TIGER journey saves and replays on the generic provenance schema",
+      "name": "save and replay restore the journey and reject a tampered file",
       "status": "passed"
     },
     {
-      "name": "desktop, tablet and mobile have no horizontal overflow",
+      "name": "changing the story restarts and keyboard choice works",
       "status": "passed"
     },
     {
-      "name": "no inference API, external request, or console error",
+      "name": "changing the story cancels a choice in flight",
+      "status": "passed"
+    },
+    {
+      "name": "a guess is marked and the real purchase revealed",
+      "status": "passed"
+    },
+    {
+      "name": "same-code step: either product, different left shelf",
+      "status": "passed"
+    },
+    {
+      "name": "each model pair restarts with its own evaluation table",
+      "status": "passed"
+    },
+    {
+      "name": "RPG pair shows one product per code and no strategy menu",
+      "status": "passed"
+    },
+    {
+      "name": "BERT4Rec and TIGER journey saves and replays",
+      "status": "passed"
+    },
+    {
+      "name": "no horizontal overflow; first view fits desktop and phone",
+      "status": "passed"
+    },
+    {
+      "name": "hash restores a journey",
+      "status": "passed"
+    },
+    {
+      "name": "share panel shows a QR of the link",
+      "status": "passed"
+    },
+    {
+      "name": "details chart covers all eight pairs",
+      "status": "passed"
+    },
+    {
+      "name": "bucket view shows categories",
+      "status": "passed"
+    },
+    {
+      "name": "kiosk loop plays and stops on input",
+      "status": "passed"
+    },
+    {
+      "name": "every pair lists the same histories",
+      "status": "passed"
+    },
+    {
+      "name": "catalog covers every shown item",
+      "status": "passed"
+    },
+    {
+      "name": "no API call, external request, failed response or console error",
       "status": "passed"
     }
   ],
   "consoleErrors": [],
   "externalRequests": [],
+  "failedResponses": [],
   "pairs": [
     "sasrec-letter",
     "sasrec-rpg",
@@ -89,61 +146,77 @@
   ],
   "files": {
     "web/src/Journeys.jsx": {
-      "bytes": 17617,
-      "sha256": "d6112c067db29b74ad07930b7a011560032415535a510a230aea3c9950abcd19"
+      "bytes": 24585,
+      "sha256": "142951ed952b7f728620af0d9fa9d76e282ef5e89f63bb370584e9a0c1f26917"
+    },
+    "web/src/journeyParts.jsx": {
+      "bytes": 9386,
+      "sha256": "3fda2d61007761cc0492a7d154fdcc7f654035a05a71a5ba62304a3eb628b4ec"
+    },
+    "web/src/journeyExtras.jsx": {
+      "bytes": 6811,
+      "sha256": "6bf7066cb4c9650161a8bbb806cb412451362a0dc1fce526abf1b5a1a722e159"
     },
     "web/src/journeys.css": {
-      "bytes": 8237,
-      "sha256": "fa19d55ed1346104260165644875e672c6bb458c07cd3bb9478806af019e6899"
+      "bytes": 15707,
+      "sha256": "518c7bc13df13623fc6acd7e607a3e1f04d41a947ce0f792ec6a98e13c10c995"
     },
     "web/src/main.jsx": {
       "bytes": 491,
       "sha256": "b2948c39012c882b50138dc01e47b793157ce44ec7091c8be78491525eea8047"
     },
     "web/index.html": {
-      "bytes": 658,
-      "sha256": "0c827cad6fe2f5d24092722317101e2575c2fe834d0f013aa6a685bac17df5b1"
+      "bytes": 1181,
+      "sha256": "0214cb69fd851c26c33f9f3b65954f1fb6aeb095ee5dd355f36250513bf6953b"
     },
     "web/dist/index.html": {
-      "bytes": 757,
-      "sha256": "473c451ae231bf299be766769e422ff6fb17a44cb4ce4762573d577548d363cc"
+      "bytes": 1280,
+      "sha256": "66ed7fd0ce29cc9496431a146306efc83b01daa56f5a3932f4f88daa1d36f762"
     },
-    "web/dist/assets/App-C2htieXz.js": {
-      "bytes": 31618,
-      "sha256": "9560551731ef84501e2326f54bbe1c35a11b7fde88183161bbce50d6d5abcac9"
+    "web/dist/assets/App-B-BSco7U.js": {
+      "bytes": 31387,
+      "sha256": "97ab8326a074b25c4e6d8c996e79d4a801420ffab4bb912f1a6e74a4cc304b93"
     },
-    "web/dist/assets/index--Z9WW7_3.css": {
-      "bytes": 30201,
-      "sha256": "4836fcadc5749e8f9ba390133953bf6996cad47ec99ec6993cda0da889acd18f"
+    "web/dist/assets/browser-CGvdcbLq.js": {
+      "bytes": 25776,
+      "sha256": "163cfaad206eb03d3be26dfd16c7a9eef2f66f632036f5a57d5f4798eafb48da"
     },
-    "web/dist/assets/index-CxURo2gH.js": {
-      "bytes": 240228,
-      "sha256": "23c0d85a555520f8d3f1108118545d958e2ff5d44e3a3e6c3825b746fe17b850"
+    "web/dist/assets/index-CeYJzhyO.css": {
+      "bytes": 37183,
+      "sha256": "093193ffc4d2657e468ab34d4c0ddf9e6897734604c262b5c4b38128f0150380"
+    },
+    "web/dist/assets/index-DWMD4yPu.js": {
+      "bytes": 258009,
+      "sha256": "886f727e0d068740cd63e16f75e78acb74129d520dab4e561711739dddd8d5f6"
     },
     "web/public/journeys/manifest.json": {
-      "bytes": 14748,
-      "sha256": "f49c1f2fd1ccb2f78f698e8705773a0da7402086c9964d75fb27196cec4d2f39"
+      "bytes": 23637,
+      "sha256": "33ba9b29253d78581291794e7d527ead10de2701bb6b457fe639010e8e579a3c"
     },
     "web/dist/journeys/manifest.json": {
-      "bytes": 14748,
-      "sha256": "f49c1f2fd1ccb2f78f698e8705773a0da7402086c9964d75fb27196cec4d2f39"
+      "bytes": 23637,
+      "sha256": "33ba9b29253d78581291794e7d527ead10de2701bb6b457fe639010e8e579a3c"
+    },
+    "web/public/journeys/media.json": {
+      "bytes": 552719,
+      "sha256": "64243ba4479ea92b51df74efee2b0216f4a0b81d2280b5498aab6a5b9b3aadbe"
     },
     "figures/journeys-desktop.png": {
-      "bytes": 171175,
-      "sha256": "62a45575fa3982659d3f54caa106a0c0c37537ca6b6c25db40430ad260a7bf30"
+      "bytes": 263129,
+      "sha256": "24c9e346fdd043618f9189a9c3dcfed1343925b39aa7f0b969b7c9a76c8538ad"
     },
     "figures/journeys-desktop-bert-mlm.png": {
-      "bytes": 172816,
-      "sha256": "fbb37eb49e8dd3f29ae47e5d414841e700cb89f7bcf749723c2b6ff6aa4d048a"
+      "bytes": 266380,
+      "sha256": "107bc02fcdd6800198427035d9817e2234de08a5ff2d9c22acefd8b9d0acb9b7"
     },
     "figures/journeys-mobile.png": {
-      "bytes": 133045,
-      "sha256": "05c5d065993cc4b8780809a3783ed48d7535cf02a5db06923a5f5517ad1eb250"
+      "bytes": 110504,
+      "sha256": "6ce02ef7e67506c040279fc7547eb0632fbf940e4aa96940cf136bd85a75f830"
     },
     "figures/journeys-mobile-viewport.png": {
-      "bytes": 47935,
-      "sha256": "b387b693245d2a8ea34ac28efce7b08e91209c2901d0ea2f6051dc46fadb3803"
+      "bytes": 72601,
+      "sha256": "0490f0600eecb5824d6f5b8c0737bf274bdc300e1a3b221909accc8c86a1b49b"
     }
   },
-  "scope": "Eight prepared Beauty model pairs served as static files; scripted checks, not a model-quality benchmark or participant usability study"
+  "scope": "Scripted browser checks of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
 }

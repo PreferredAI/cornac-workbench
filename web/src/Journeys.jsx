@@ -1,5 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {ArrowLeft, ArrowRight, Check, Download, RotateCcw, ScanLine} from 'lucide-react';
+import {ArrowLeft, Check, Download, QrCode, RotateCcw, ScanLine, Upload} from 'lucide-react';
+import {ChangeLine, DetailsToggle, HistoryStrip, ProductCard, Recap, SameCodeStep, addressesDiff, changeText, count, itemShort, itemTitle, plainLabels, revealText, shelfDiff, targetRank} from './journeyParts.jsx';
+import {BucketBreakdown, RecallChart, SharePanel, buildHash, readHash} from './journeyExtras.jsx';
 import './journeys.css';
 
 const labels = {
@@ -7,37 +9,24 @@ const labels = {
   expand_popularity: 'Expand buckets · Popularity', expand_cosine: 'Expand buckets · History cosine',
 };
 const requests = new Map();
+const resolved = new Map();
 function load(path) {
   if (!requests.has(path)) requests.set(path, fetch(`/journeys/${path}`).then(response => {
     if (!response.ok) throw new Error(`Could not load prepared journey (${response.status}).`);
     return response.json();
-  }).catch(error => {requests.delete(path); throw error;}));
+  }).then(data => {resolved.set(path, data); return data;}).catch(error => {requests.delete(path); throw error;}));
   return requests.get(path);
 }
 const statePath = (pair, id) => `${pair}/states/${id}.json`;
 const number = value => Number(value).toFixed(4);
-const itemTitle = (catalog, item) => catalog[String(item)]?.title || `Item ${item}`;
+const items = cards => cards.map(card => card.item);
 
-function Product({card, catalog, terminal, onChoose, onInspect, prepare, tone}) {
-  const title = itemTitle(catalog, card.item);
-  return <article className={`journey-product ${tone}`}>
-    <span className="product-monogram" aria-hidden="true">{title.replace(/[^a-zA-Z ]/g, '').split(' ').filter(Boolean).slice(0, 2).map(word => word[0]).join('')}</span>
-    <div className="product-info"><h3>{title}</h3>
-    {card.address ? <button className="bucket-link" onClick={() => onInspect(card)}>
-      SID #{card.sid_rank} · {card.bucket_size.toLocaleString()} {card.bucket_size === 1 ? 'item' : 'items'} <span aria-hidden="true">↗</span>
-    </button> : null}</div>
-    <button className="choose-product" disabled={terminal} onPointerEnter={prepare} onFocus={prepare} onClick={() => onChoose(card.item)}
-      aria-label={terminal ? `Final suggestion: ${title}` : `Choose ${title}`}>
-      {terminal ? 'Final suggestion' : <>Choose <ArrowRight size={14} aria-hidden="true"/></>}
-    </button>
-  </article>;
-}
-
-function Benchmark({data, pair, strategy}) {
+function Benchmark({data, all, pairs, pair, strategy}) {
   if (!data) return null;
   return <section className="journey-benchmark" aria-labelledby="benchmark-heading">
     <div className="section-caption"><div><h2 id="benchmark-heading">Evaluation <span className="model-tag semantic">Cornac 3.1</span></h2>
-      <p>{data.query_count.toLocaleString()} held-out queries. These metrics do not score your choices.</p></div></div>
+      <p>Scores on {data.query_count.toLocaleString()} held-out shoppers. They do not score your choices.</p></div></div>
+    {all ? <RecallChart pairs={pairs} data={all} strategy={strategy} policy={labels[strategy]} current={[pair.traditional, pair.sid]}/> : null}
     <div className="metric-table-wrap"><table className="journey-metrics"><thead><tr><th>Model / evaluation view</th><th>Recall@5</th><th>NDCG@5</th></tr></thead><tbody>
       {[[`${pair.traditional} · Item`, 'traditional'], [`${pair.sid} · SID`, 'sid'], [`${pair.sid} · CCE`, 'cce'], [`${pair.sid} · Item · ${labels[strategy]}`, strategy]].map(([label, key]) =>
         <tr key={key}><th scope="row">{label}</th><td>{number(data.metrics[key].recall)}</td><td>{number(data.metrics[key].ndcg)}</td></tr>)}
@@ -49,25 +38,27 @@ function Benchmark({data, pair, strategy}) {
   </section>;
 }
 
-function Inspector({card, node, catalog, onClose}) {
+function Inspector({card, node, catalog, media, pair, showDetails, onClose}) {
   if (!card) return null;
   const bucket = node.buckets.find(row => row.address.join(',') === card.address.join(','));
   return <section className="journey-inspector" aria-labelledby="bucket-heading">
-    <div className="inspector-title"><h2 id="bucket-heading">One SID, {bucket.size.toLocaleString()} {bucket.size === 1 ? 'item' : 'items'}</h2>
+    <div className="inspector-title"><h2 id="bucket-heading">{showDetails ? `One SID, ${count(bucket.size, 'item')}` : `One code, ${count(bucket.size, 'product')}`}</h2>
       <button className="button" onClick={onClose} aria-label="Close bucket inspector">Close</button></div>
-    <code className="sid-code">[{bucket.address.join(', ')}]</code>
-    <p>Native SID score: {number(bucket.score)}.</p>
-    <div className="bucket-columns">{[['popularity', 'Training popularity'], ['cosine', 'Visible-history cosine']].map(([key, label]) =>
+    <code className="sid-code">{showDetails ? `[${bucket.address.join(', ')}]` : `code ${bucket.address.join('·')}`}</code>
+    {showDetails ? <p>Native SID score: {number(bucket.score)}.</p> : null}
+    <BucketBreakdown info={media?.buckets?.[pair.sid]?.[bucket.address.join(',')]} showDetails={showDetails}/>
+    <div className="bucket-columns">{[['popularity', showDetails ? 'Training popularity' : plainLabels.one_popularity], ['cosine', showDetails ? 'Visible-history cosine' : plainLabels.one_cosine]].map(([key, label]) =>
       <div key={key}><h3>{label}</h3><ol>{bucket[key].map(member => <li key={member.item} className={member.item === card.item ? 'chosen-member' : ''}>
-        <span>{itemTitle(catalog, member.item)}{member.item === card.item ? <Check size={14} aria-label="Selected item"/> : null}</span><strong>{key === 'popularity' ? member.score.toLocaleString() : number(member.score)}</strong>
+        <span>{itemTitle(catalog, member.item)}{member.item === card.item ? <Check size={14} aria-label="Selected item"/> : null}</span>{showDetails ? <strong>{key === 'popularity' ? member.score.toLocaleString() : number(member.score)}</strong> : null}
       </li>)}</ol></div>)}</div>
-    <p className="subtle">Showing up to 12 leading members per resolver. Ties use the smallest catalog item index. Expanded mode exhausts each ordered bucket before moving to the next SID; one large bucket can fill the entire shelf.</p>
+    {showDetails ? <p className="subtle">Showing up to 12 leading members per resolver. Ties use the smallest catalog item index. Expanded mode exhausts each ordered bucket before moving to the next SID; one large bucket can fill the entire shelf.</p> : null}
   </section>;
 }
 
 export default function Journeys() {
   const [manifest, setManifest] = useState(null);
   const [catalog, setCatalog] = useState({});
+  const [media, setMedia] = useState(null);
   const [benchmark, setBenchmark] = useState(null);
   const [pairId, setPairId] = useState('');
   const [seedId, setSeedId] = useState('');
@@ -78,22 +69,89 @@ export default function Journeys() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [revealedOnce, setRevealed] = useState(false);
+  const [guess, setGuess] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [why, setWhy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [benchmarks, setBenchmarks] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [kiosk, setKiosk] = useState(false);
+  const [kioskStep, setKioskStep] = useState(-1);
+  const written = useRef('');
+  const home = useRef(null);
   const requestVersion = useRef(0);
   const replayFile = useRef(null);
   const timeline = useRef(null);
   const heading = useRef(null);
+  const pairSelect = useRef(null);
   const pair = manifest?.pairs.find(row => row.id === pairId);
-  const seed = pair?.seeds.find(row => row.id === seedId);
   const depth = Math.max(0, trail.length - 1);
   const terminal = Boolean(manifest && depth === manifest.max_choices);
+  const target = media?.targets[seedId];
+  const revealed = revealedOnce || target == null;
+  const phase = terminal ? 'recap' : revealed ? 'explore' : 'hook';
+  const synced = Boolean(node) && resolved.get(statePath(pairId, trail[trail.length - 1])) === node;
+  const nodes = synced ? trail.map(id => resolved.get(statePath(pairId, id))) : [];
+  const parent = nodes[depth - 1];
+  const left = parent && shelfDiff(items(parent.traditional), items(node.traditional));
+  const right = parent && shelfDiff(items(parent.shelves[strategy]), items(node.shelves[strategy]));
+  const isTarget = item => revealed && item === target;
+  const question = node && `A real shopper bought these ${node.history.length - depth} products. What did they buy next?`;
+  const revealLine = synced && phase === 'explore' && !depth && target != null ? revealText(pair, targetRank(node.shelves[strategy], target), targetRank(node.traditional, target)) : '';
+  const probe = pair?.same_bucket_probe;
+  const picked = synced && depth ? node.history[node.history.length - 1] : null;
+  const probeStep = probe?.seed === seedId && phase === 'explore' && synced && (!depth || (depth === 1 && probe.items.includes(picked)));
 
   useEffect(() => {
     document.title = 'Cornac Workbench · Beauty recommendation journeys';
-    Promise.all([load('manifest.json'), load('catalog.json')]).then(([data, items]) => {
-      setManifest(data); setCatalog(items);
-      setPairId(data.pairs[0].id); setSeedId(data.pairs[0].seeds[0].id); setTrail([data.pairs[0].seeds[0].id]);
-    }).catch(e => setError(e.message));
+    (async () => {
+      const [data, items, images] = await Promise.all([load('manifest.json'), load('catalog.json'), load('media.json').catch(() => null)]);
+      const start = readHash(location.hash, data, strategy);
+      let path = [start.seed];
+      let from = start.steps.length ? await load(statePath(start.pair, start.seed)) : null;
+      for (const id of start.steps) {
+        if (!Object.values(from.next).includes(id)) {path = [start.seed]; break;}
+        from = await load(statePath(start.pair, id)); path.push(id);
+      }
+      const shown = start.revealed || path.length > 1;
+      // The address bar keeps its URL until the visitor changes something.
+      written.current = buildHash({pair: start.pair, seed: start.seed, strategy: start.strategy, trail: path, revealed: shown, kiosk: start.kiosk});
+      home.current = [start.pair, start.seed];
+      if (start.kiosk) window.__kioskIdleMs ??= 60000;
+      setManifest(data); setCatalog(items); setMedia(images);
+      setPairId(start.pair); setSeedId(start.seed); setTrail(path); setStrategy(start.strategy); setRevealed(shown); setKiosk(start.kiosk);
+    })().catch(e => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    if (!pairId) return;
+    const hash = buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk});
+    if (hash !== written.current) {written.current = hash; history.replaceState(history.state, '', `#${hash}`);}
+  }, [pairId, seedId, strategy, trail, revealedOnce, kiosk]);
+
+  useEffect(() => {
+    if (!showDetails || !manifest || benchmarks) return;
+    Promise.all(manifest.pairs.map(row => load(row.benchmark))).then(setBenchmarks).catch(() => {});
+  }, [showDetails, manifest, benchmarks]);
+
+  // Attract loop (k=1): starts after an idle spell; any pointer or key input stops it and restarts the idle timer.
+  useEffect(() => {
+    if (!kiosk || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let timer;
+    const wake = () => {setKioskStep(-1); clearTimeout(timer); timer = setTimeout(() => setKioskStep(0), window.__kioskIdleMs ?? 60000);};
+    wake();
+    for (const type of ['pointerdown', 'keydown']) addEventListener(type, wake, true);
+    return () => {clearTimeout(timer); for (const type of ['pointerdown', 'keydown']) removeEventListener(type, wake, true);};
+  }, [kiosk]);
+
+  useEffect(() => {
+    if (kioskStep < 0) return;
+    const advance = () => setKioskStep(step => step < 0 ? step : (step + 1) % loop.length);
+    if (loop[kioskStep].action() === false) {advance(); return;}
+    const timer = setTimeout(advance, loop[kioskStep].ms);
+    return () => clearTimeout(timer);
+  }, [kioskStep]);
 
   useEffect(() => {
     if (!pair) return;
@@ -120,24 +178,42 @@ export default function Journeys() {
     if (timeline.current) timeline.current.scrollLeft = timeline.current.scrollWidth;
   }, [node]);
 
+  useEffect(() => {
+    if (revealedOnce) (document.querySelector('.is-target .choose-product:not(:disabled)') || heading.current)?.focus();
+  }, [revealedOnce]);
+
   function reset(nextPair, nextSeed) {
     ++requestVersion.current;
-    setBusy(true); setNode(null);
+    setBusy(true); setNode(null); setWhy(false); setHistoryOpen(false); setGuess(null);
     setPairId(nextPair); setSeedId(nextSeed); setTrail([nextSeed]); setNotice('New journey started.');
   }
-  async function choose(item) {
-    const id = node.next[String(item)];
+  function reveal(item) {
+    setGuess(item); setRevealed(true); setNotice(revealText(pair, targetRank(node.shelves[strategy], target), targetRank(node.traditional, target)));
+  }
+  async function choose(item, base = trail) {
+    const from = resolved.get(statePath(pairId, base[base.length - 1]));
+    const id = from?.next[String(item)];
     if (!id || busy) return;
     const version = requestVersion.current;
     setBusy(true);
     try {
-      await load(statePath(pairId, id));
+      const next = await load(statePath(pairId, id));
       if (version !== requestVersion.current) return;
-      setTrail(previous => [...previous, id]);
-      setNotice(`Added ${itemTitle(catalog, item)}. Recommendations updated for the same history.`);
+      setTrail([...base, id]);
+      setNotice(changeText(shelfDiff(items(from.traditional), items(next.traditional)), shelfDiff(items(from.shelves[strategy]), items(next.shelves[strategy]))));
       heading.current?.focus({preventScroll: true});
     } catch (e) {if (version === requestVersion.current) {setError(e.message); setBusy(false);}}
   }
+  // The loop picks the first right-hand card it can follow, preferring one the shopper has not bought yet.
+  const followable = synced ? node.shelves[strategy].map(row => row.item).filter(item => node.next[String(item)]) : [];
+  const firstRight = followable.find(item => !node.history.includes(item)) ?? followable[0];
+  const loop = [
+    {caption: 'A real shopper bought these products.', ms: 3000, action: () => {setShowDetails(false); setShareOpen(false); setRevealed(false); scrollTo(0, 0); reset(...home.current);}},
+    {caption: `They bought ${target != null ? itemShort(media, catalog, target) : 'this'} next.`, ms: 4000, action: () => phase === 'hook' && synced ? reveal(null) : false},
+    {caption: 'Follow the shopper and watch the lists react.', ms: 4000, action: () => phase === 'explore' && !depth && synced && node.next[String(target)] ? choose(target) : false},
+    {caption: 'Pick anything.', ms: 4000, action: () => phase === 'explore' && firstRight != null ? choose(firstRight) : false},
+    {caption: 'Two choices, two different stories.', ms: 6000, action: () => terminal ? undefined : phase === 'explore' && firstRight != null ? choose(firstRight) : false},
+  ];
   function download() {
     const result = {schema_version: 1, pair: pairId, seed: seedId, state_ids: trail, history: node.history,
       strategy, provenance: pair.provenance, execution: manifest.execution};
@@ -169,66 +245,74 @@ export default function Journeys() {
             || JSON.stringify(next.history.slice(0, -1)) !== JSON.stringify(previous.history)) throw new Error('Journey contains an unsupported transition.');
       }
       if (JSON.stringify(saved.history) !== JSON.stringify(nodes[nodes.length - 1].history)) throw new Error('Saved history differs from prepared predictions.');
-      setPairId(saved.pair); setSeedId(saved.seed); setTrail(saved.state_ids); setStrategy(saved.strategy);
-      setNotice('Replay verified. Your prepared journey has been restored.'); setError('');
+      setPairId(saved.pair); setSeedId(saved.seed); setTrail(saved.state_ids); setStrategy(saved.strategy); setRevealed(true);
+      setNotice('Journey restored.'); setError('');
     } catch (e) {if (version === requestVersion.current) {setError(`Replay failed: ${e.message}`); setBusy(false);}}
     event.target.value = '';
   }
 
+  const card = tone => (row, i) => <ProductCard key={row.item} card={row} catalog={catalog} media={media} tone={tone} phase={phase} showDetails={showDetails}
+    change={(tone === 'traditional' ? left : right)?.rows[i]} isTarget={isTarget(row.item)} isGuess={!depth && revealed && guess === row.item} follow={!depth && isTarget(row.item)}
+    disabled={busy} onPick={phase === 'hook' ? reveal : choose} onInspect={setInspected}
+    prepare={() => node.next[String(row.item)] && load(statePath(pairId, node.next[String(row.item)])).catch(() => {})}/>;
+  const single = node?.buckets.every(bucket => bucket.size === 1);
   return <>
     <a className="skip-link" href="#journey-main">Skip to shopping journey</a>
     <header className="app-header"><div className="brand"><ScanLine className="brand-mark" size={25} aria-hidden="true"/>
       <span>Cornac <span className="brand-workbench">Workbench</span></span><a className="preferred-signature" href="https://preferred.ai/" target="_blank" rel="noreferrer">by <strong>PreferredAI<span>.</span></strong></a></div>
-      <div className="header-actions"><input type="file" accept=".json,application/json" ref={replayFile} onChange={replay} hidden aria-label="Journey replay file"/>
-        <button className="button" disabled={!manifest || busy} onClick={() => replayFile.current.click()}><RotateCcw size={14}/>Replay journey</button>
-        {globalThis.CORNAC_DIAGNOSTICS ? <a className="button" href="?view=diagnostics">Open diagnostic workbench</a> : null}</div></header>
+      <input type="file" accept=".json,application/json" ref={replayFile} onChange={replay} hidden aria-label="Journey replay file"/>
+      {globalThis.CORNAC_DIAGNOSTICS ? <div className="header-actions"><a className="button" href="?view=diagnostics">Open diagnostic workbench</a></div> : null}</header>
     <main className="journey-main" id="journey-main" tabIndex={-1}>
-      <div className="journey-intro"><div><p className="eyebrow">Amazon Beauty</p><h1>Compare recommendations</h1></div><span className="offline-badge">Precomputed outputs</span></div>
       {error ? <div className="message error" role="alert">{error}<button className="button" onClick={() => location.reload()}>Reload journey</button></div> : null}
       {!manifest || !node || !pair ? <p role="status" className="loading">Preparing your Beauty journey…</p> : <>
-        <section className="journey-setup" aria-label="Journey setup">
-          <label>Model pair<select aria-label="Journey model pair" value={pairId} onChange={event => {const selected = manifest.pairs.find(p => p.id === event.target.value); reset(selected.id, selected.seeds[0].id);}}>
-            {manifest.pairs.map(row => <option key={row.id} value={row.id}>{row.traditional} + {row.sid}</option>)}
-          </select></label>
-          <label>Starting history<select aria-label="Starting story" value={seedId} onChange={event => reset(pairId, event.target.value)}>
-            {pair.seeds.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}
-          </select></label>
-        </section>
-        <section className="journey-context" aria-labelledby="history-heading">
-          <div className="section-caption"><h2 id="history-heading">History</h2></div>
-          <ol className="journey-timeline" ref={timeline}>{node.history.map((item, index) => <li key={`${index}-${item}`} className={index >= node.history.length - depth ? 'attendee-choice' : ''}>
-            <span>{index + 1}</span><p>{itemTitle(catalog, item)}</p>{index >= node.history.length - depth ? <small>Your choice</small> : null}
-          </li>)}</ol>
-          <div className="journey-controls"><span className="progress-label">{terminal ? 'Journey complete' : `Choice ${depth + 1} of ${manifest.max_choices}`}<span className="progress-dots" aria-hidden="true">{Array.from({length: manifest.max_choices}, (_, i) => <i key={i} className={i < depth ? 'done' : ''}/>)}</span></span>
+        <div className="journey-intro">{revealLine ? <><p className="journey-question" id="journey-question">{question}</p><h1 className="reveal-line">{revealLine}</h1></> : <h1 id="journey-question">{question}</h1>}</div>
+        <section className="journey-context" aria-labelledby="journey-question">
+          <HistoryStrip history={node.history} depth={depth} catalog={catalog} media={media} open={historyOpen} onToggle={() => setHistoryOpen(open => !open)} stripRef={timeline}/>
+          {phase === 'hook' ? null : <div className="journey-controls"><span className="progress-label">{terminal ? 'Journey complete' : `Choice ${depth + 1} of ${manifest.max_choices}`}<span className="progress-dots" aria-hidden="true">{Array.from({length: manifest.max_choices}, (_, i) => <i key={i} className={i < depth ? 'done' : ''}/>)}</span></span>
             <button className="button" disabled={!depth || busy} onClick={() => {setTrail(previous => previous.slice(0, -1)); setNotice('Choice undone. Explore another direction.');}}><ArrowLeft size={14}/>Undo</button>
-            <button className="button" disabled={busy} onClick={() => reset(pairId, seedId)}><RotateCcw size={14}/>Restart</button>
-            <button className="button" disabled={busy} onClick={download}><Download size={14}/>Save journey</button>
-          </div>
-          <details className="context-contract"><summary>About this example</summary><p>{seed.selection}. {manifest.execution}. Native context limits: {Object.entries(pair.contexts).map(([name, limit]) => `${name} ${limit} items`).join(' · ')}. Resolver cosine uses the entire visible history. No live model training or inference runs in your browser.</p></details>
-          {pair.same_bucket_probe?.seed === seedId && depth === 0 ? <details className="context-contract"><summary>Try two products with the same SID</summary>
-            <p>These alternatives share SID [{pair.same_bucket_probe.address.join(', ')}]. Offline verification confirms LETTER produces the same next native SID predictions after either choice. The item-based model and cosine resolver still receive different products. Choose one, then undo to try the other.</p>
-            {pair.same_bucket_probe.items.map(item => <button key={item} className="button" disabled={busy} onClick={() => choose(item)}>{itemTitle(catalog, item)}</button>)}
-          </details> : null}
+            {terminal ? null : <><button className="button" disabled={busy} onClick={() => reset(pairId, seedId)}><RotateCcw size={14}/>Restart</button>
+              <button className="button" disabled={busy} onClick={download}><Download size={14}/>Save journey</button></>}
+            <button className="button" disabled={busy} onClick={() => replayFile.current.click()}><Upload size={14}/>Replay journey</button>
+            <button className="button" onClick={() => setShareOpen(true)}><QrCode size={14} aria-hidden="true"/>Share</button>
+          </div>}
         </section>
         <div className="journey-live" role="status" aria-live="polite">{busy ? 'Updating recommendations…' : notice}</div>
         <section className={`journey-recommendations ${busy ? 'is-busy' : ''}`} aria-labelledby="recommendations-heading" aria-busy={busy}>
-          <div className="section-caption"><h2 id="recommendations-heading" ref={heading} tabIndex={-1}>{terminal ? 'Final recommendations' : 'Choose the next item'}</h2></div>
+          <div className="section-caption"><h2 id="recommendations-heading" ref={heading} tabIndex={-1}>{phase === 'hook' ? 'Tap your guess.' : terminal ? 'Final recommendations' : 'Now you choose. Pick anything and watch both lists react.'}</h2>
+            {phase === 'hook' ? <button className="text-button show-me" onClick={() => reveal(null)}>Just show me</button> : <DetailsToggle on={showDetails} onToggle={() => setShowDetails(on => !on)}/>}</div>
+          {left ? <ChangeLine pair={pair} left={left} right={right} codes={addressesDiff(parent, node)} open={why} onToggle={() => setWhy(open => !open)}/> : null}
+          {terminal && synced ? <Recap pair={pair} picks={node.history.slice(-2).map(item => itemShort(media, catalog, item))}
+            left={nodes.slice(1).map((step, i) => shelfDiff(items(nodes[i].traditional), items(step.traditional)).newCount)} codes={nodes.slice(1).map((step, i) => addressesDiff(nodes[i], step))}
+            rank={target != null ? targetRank(nodes[0].shelves[strategy], target) : 0} onAnother={() => pairSelect.current?.focus()} onRestart={() => reset(pairId, seedId)} onSave={download}/> : null}
           <div className="recommendation-columns">
-          <div className="shelf-heading traditional-heading"><div><span className="model-tag traditional">Cornac 2.0</span><h3>{pair.traditional}</h3></div><p>Direct item ranking</p></div>
-          <div className="product-shelf" data-testid="traditional-shelf">{node.traditional.map(card => <Product key={card.item} card={card} catalog={catalog} terminal={terminal || busy} tone="traditional" onChoose={choose}
-            prepare={() => node.next[String(card.item)] && load(statePath(pairId, node.next[String(card.item)])).catch(() => {})}/>)}</div>
-          <div className="shelf-heading semantic-heading"><div><span className="model-tag semantic">Cornac 3.0</span><h3>{pair.sid}</h3></div>
-            <label><span className="sr-only">SID → item strategy</span><select aria-label="SID to item strategy" value={strategy} onChange={event => {setStrategy(event.target.value); setInspected(null);}}>
-              {manifest.strategies.map(value => <option key={value} value={value}>{labels[value]}</option>)}
-            </select></label></div>
-          <div className="product-shelf" data-testid="sid-shelf">{node.shelves[strategy].map(card => <Product key={card.item} card={card} catalog={catalog} terminal={terminal || busy} tone="semantic" onChoose={choose} onInspect={setInspected}
-            prepare={() => node.next[String(card.item)] && load(statePath(pairId, node.next[String(card.item)])).catch(() => {})}/>)}</div>
+          <div className="shelf-heading traditional-heading"><div><h3>Ranks products</h3><span className="model-name traditional">{pair.traditional}</span></div></div>
+          <div className="product-shelf" data-testid="traditional-shelf">{node.traditional.map(card('traditional'))}</div>
+          <div className="shelf-heading semantic-heading"><div><h3>Predicts codes</h3><span className="model-name semantic">{pair.sid}</span></div>
+            {phase === 'hook' ? null : single ? <p className="single-code">One product per code</p>
+              : <label><span className="sr-only">SID → item strategy</span><select aria-label="SID to item strategy" value={strategy} onChange={event => {setStrategy(event.target.value); setInspected(null);}}>
+                {manifest.strategies.map(value => <option key={value} value={value}>{(showDetails ? labels : plainLabels)[value]}</option>)}
+              </select></label>}</div>
+          <div className="product-shelf" data-testid="sid-shelf">{node.shelves[strategy].map(card('semantic'))}</div>
           </div>
-          <details className="context-contract"><summary>Resolver details</summary><p>{strategy.startsWith('expand') ? 'Expand members in SID order, then take five items. A large bucket can fill the list.' : 'Select one representative from each generated SID bucket.'} {strategy.endsWith('cosine') ? 'Cosine uses the visible history.' : 'Popularity uses training purchases only.'}</p></details>
+          {showDetails ? <details className="context-contract"><summary>Resolver details</summary><p>{strategy.startsWith('expand') ? 'Expand members in SID order, then take five items. A large bucket can fill the list.' : 'Select one representative from each generated SID bucket.'} {strategy.endsWith('cosine') ? 'Cosine uses the visible history.' : 'Popularity uses training purchases only.'}</p></details> : null}
+          {phase === 'hook' ? null : <div className="journey-setup" role="group" aria-labelledby="setup-heading"><h3 id="setup-heading">Try another model</h3>
+            <label>Model pair<select ref={pairSelect} aria-label="Journey model pair" value={pairId} onChange={event => {const selected = manifest.pairs.find(p => p.id === event.target.value); reset(selected.id, selected.seeds[0].id);}}>
+              {manifest.pairs.map(row => <option key={row.id} value={row.id}>{row.traditional} + {row.sid}</option>)}
+            </select></label>
+            <label>Starting history<select aria-label="Starting story" value={seedId} onChange={event => reset(pairId, event.target.value)}>
+              {pair.seeds.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}
+            </select></label>
+          </div>}
         </section>
-        <Inspector card={inspected} node={node} catalog={catalog} onClose={() => setInspected(null)}/>
-        <Benchmark data={benchmark} pair={pair} strategy={strategy}/>
+        {probeStep ? <SameCodeStep probe={probe} size={nodes[0].buckets.find(bucket => bucket.address.join(',') === probe.address.join(',')).size} pair={pair} catalog={catalog} media={media}
+          picked={picked} result={depth ? {same: addressesDiff(parent, node).same, newCount: left.newCount} : null} busy={busy}
+          onChoose={(item, swap) => choose(item, swap ? trail.slice(0, 1) : trail)}/> : null}
+        <Inspector card={inspected} node={node} catalog={catalog} media={media} pair={pair} showDetails={showDetails} onClose={() => setInspected(null)}/>
+        {showDetails ? <Benchmark data={benchmark} all={benchmarks} pairs={manifest.pairs} pair={pair} strategy={strategy}/> : null}
+        {shareOpen ? <SharePanel url={new URL(`#${buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk: false})}`, location.href).href} onClose={() => setShareOpen(false)}/> : null}
+        {kioskStep >= 0 ? <p className="kiosk-caption" aria-live="off">{loop[kioskStep].caption}</p> : null}
       </>}
+      <p className="journey-footnote">Real purchase histories from Amazon Beauty (2014), chosen by the authors. Every recommendation was computed ahead of time; nothing runs live.</p>
     </main>
   </>;
 }

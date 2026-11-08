@@ -3,7 +3,6 @@
 import argparse
 from collections import deque
 from datetime import datetime, timezone
-import hashlib
 import json
 from pathlib import Path
 import time
@@ -18,6 +17,7 @@ HERE = Path(__file__).parent
 ROOT = HERE.resolve().parents[1]
 STUDY = ROOT / "runs/beauty-search-2026-09-14"
 SOURCE = ROOT / "papers/ecir2027-replicability/artifact-bundle/data/beauty"
+SEEDS = HERE / "journey-seeds.json"  # written by select_seeds.py
 # Per-pair provenance keys in writer order (BeautyModels.provenance).
 PROVENANCE_KEYS = ("universe_sha256", "traditional_model", "traditional_checkpoint_sha256", "sid_model",
                    "sid_checkpoint_sha256", "raw_predictions_sha256", "raw_query_target_alignment",
@@ -151,17 +151,23 @@ class BeautyModels:
             self.sid_cache[key] = [{"address": pred.address_sids[i].tolist(), "score": float(pred.scores[i])} for i in order]
         return self.sid_cache[key]
 
-    def qualify(self):
+    def history(self, query_id):
+        return self.universe["test"][query_id]["items"][:-1]
+
+    def qualify(self, query_ids):
         receipts = []
-        for query_id in (145, 210):
-            row = next(q for q in self.bundle["queries"] if q["query_index"] == query_id)
-            observed = self.native(row["history_item_indices"])
+        bundle = {q["query_index"]: q for q in self.bundle["queries"]}
+        for query_id in query_ids:
+            history, row = self.history(query_id), bundle.get(query_id)
+            if row is not None and row["history_item_indices"] != history:
+                raise ValueError("Bundle history differs from the qualified universe")
+            observed = self.native(history)
             if self.raw is None:
                 # Newly trained TIGER has no old prediction oracle. Compare an
                 # independent weights-only reload, rather than its cache.
                 from fit_tiger_asset import load_tiger_asset
                 restored, _ = load_tiger_asset(self.letter_path)
-                pred = restored.predict_semantic_ids(row["history_item_indices"])
+                pred = restored.predict_semantic_ids(history)
                 order = np.argsort(-np.where(pred.catalog_validity, pred.scores, -1000.), kind="stable")
                 expected = [{"address": pred.address_sids[i].tolist(), "score": float(pred.scores[i])} for i in order]
             else:
@@ -173,14 +179,17 @@ class BeautyModels:
             if [p["address"] for p in observed] != [p["address"] for p in expected]:
                 raise ValueError(f"{self.sid_label} checkpoint does not reproduce qualified native paths")
             np.testing.assert_allclose([p["score"] for p in observed], [p["score"] for p in expected], atol=1e-5, rtol=1e-5)
-            ranking, scores = self.sasrec.rank(0, history_items=row["history_item_indices"])
-            if self.traditional_name == "sasrec" and ranking[:20].tolist() != row["sasrec"]["ranked_item_indices"][:20]:
+            ranking, scores = self.sasrec.rank(0, history_items=history)
+            # Only the 18 bundle queries have a stored SASRec top-20.
+            checked = self.traditional_name == "sasrec" and row is not None
+            top20 = ranking[:20].tolist()
+            if checked and top20 != row["sasrec"]["ranked_item_indices"][:20]:
                 raise ValueError("SASRec checkpoint does not reproduce qualified ranking")
             if not np.isfinite(scores).all() or len(set(ranking[:20])) != 20:
                 raise ValueError("Traditional model returned an invalid ranking")
             receipts.append({"query_index": query_id, "native_paths_reproduced": True,
                              "traditional_checkpoint_qualified": True,
-                             "sasrec_top20_reproduced": self.traditional_name == "sasrec"})
+                             "sasrec_top20_reproduced": checked})
         return receipts
 
     def scores(self, history, paths):
@@ -329,6 +338,18 @@ def pair_rank(pair_id):
     return TRADITIONAL_ORDER.index(traditional), SID_ORDER.index(sid)
 
 
+def trimmed_catalog(output, items):
+    """Catalog entries for every item that a state of any pair under output shows."""
+    used = set()
+    for path in output.glob("*/states/*.json"):
+        state = json.loads(path.read_text())
+        rows = state["traditional"] + sum(state["shelves"].values(), [])
+        for bucket in state["buckets"]:
+            rows += bucket["popularity"] + bucket["cosine"]
+        used.update(state["history"], (row["item"] for row in rows))
+    return {str(item): items[str(item)] for item in sorted(used)}
+
+
 def build_manifest(pairs, catalog_items):
     """Schema 2: provenance, qualification, validation and seconds live only on their own pair."""
     pairs = sorted(pairs, key=lambda row: pair_rank(row["id"]))
@@ -357,16 +378,15 @@ def main():
     args = parser.parse_args()
     started = time.monotonic()
     models = BeautyModels(args.sid, args.traditional, args.traditional_checkpoint, args.sid_checkpoint)
-    qualification = models.qualify()
+    chosen = json.loads(SEEDS.read_text())
+    qualification = models.qualify([seed["query_index"] for seed in chosen])
     pair = f"{args.traditional}-{args.sid}"
     roots, seeds, states = [], [], {}
-    for query_id, label in ((145, "Explore a beauty routine"), (210, "Try a different direction")):
-        row = next(q for q in models.bundle["queries"] if q["query_index"] == query_id)
-        identifier = history_id(row["history_item_indices"])
+    for seed in chosen:
+        identifier = history_id(models.history(seed["query_index"]))
         roots.append(identifier)
-        seeds.append({"id": identifier, "query_index": query_id, "label": label,
-                      "selection": "Deliberately selected resolver-disagreement case; not a representative shopper"})
-    queue = deque((next(q for q in models.bundle["queries"] if q["query_index"] == seed["query_index"])["history_item_indices"], 0) for seed in seeds)
+        seeds.append({"id": identifier, **seed})
+    queue = deque((models.history(seed["query_index"]), 0) for seed in seeds)
     while queue:
         history, depth = queue.popleft()
         identifier = history_id(history)
@@ -394,7 +414,8 @@ def main():
         write(benchmark_path, saved)
     else:
         benchmark(models, benchmark_path)
-    write(args.output / "catalog.json", models.bundle["items"])
+    catalog = trimmed_catalog(args.output, models.bundle["items"])
+    write(args.output / "catalog.json", catalog)
     manifest_path = args.output / "manifest.json"
     previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
     pair_record = {"id": pair, "traditional": models.traditional_label, "sid": models.sid_label, "seeds": seeds,
@@ -404,7 +425,7 @@ def main():
                    "same_bucket_probe": same_bucket_probe(models, states, seeds),
                    "seconds": time.monotonic() - started}
     pairs = [row for row in previous.get("pairs", []) if row["id"] != pair] + [pair_record]
-    write(args.output / "manifest.json", build_manifest(pairs, len(models.bundle["items"])))
+    write(args.output / "manifest.json", build_manifest(pairs, len(catalog)))
     if pair == "sasrec-letter":
         write(args.output / "benchmark.json", json.loads(benchmark_path.read_text()))
     print(json.dumps({"status": "passed", **validation, "seconds": pair_record["seconds"]}), flush=True)

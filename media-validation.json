@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-11-08T18:56:04+00:00",
+  "items": 2408,
+  "with_image": 2407,
+  "missing": [
+    {
+      "item_index": 3982,
+      "item_id": "B0009R5B8A"
+    }
+  ],
+  "thumb_bytes": 14988300,
+  "width_range": [
+    20,
+    320
+  ],
+  "height_range": [
+    71,
+    320
+  ],
+  "meta_sha256": "c7977dc0e0ead14ac7df8c1c6de74da00e4bebfad87a0f0c5763d4c5bc9b53a0",
+  "bundle_sha256": "0d2da71b27ea26866be6a6985724fe13d7a38cd029afc8901e59f0aa071df98c",
+  "targets": {
+    "c38261d27a225339b377": 2739,
+    "72e96fcc60073db89607": 2993,
+    "c786846c74090f60f70e": 667,
+    "5d7159d983cb6e78a151": 10732,
+    "1c18df90493bad375496": 1024,
+    "3dccf369bed6e951a10f": 3291
+  },
+  "buckets": {
+    "LETTER": {
+      "addresses": 147,
+      "largest": {
+        "address": "195,184,83,0",
+        "size": 1643
+      }
+    },
+    "RPG": {
+      "addresses": 324,
+      "largest": {
+        "address": "142,253,120,128,37,23,120,90,239,236,64,97,131,68,58,141,174,138,202,194,194,170,48,34,104,199,104,244,238,152,232,43",
+        "size": 3
+      }
+    },
+    "DiffGRM": {
+      "addresses": 171,
+      "largest": {
+        "address": "52,239,35,210",
+        "size": 26
+      }
+    },
+    "TIGER": {
+      "addresses": 286,
+      "largest": {
+        "address": "3,52,49,0",
+        "size": 1
+      }
+    }
+  }
+}

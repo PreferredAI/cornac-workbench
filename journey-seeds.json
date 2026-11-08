@@ -1,0 +1,32 @@
+[
+  {
+    "query_index": 145,
+    "label": "Explore a beauty routine",
+    "selection": "Deliberately selected resolver-disagreement case; not a representative shopper"
+  },
+  {
+    "query_index": 210,
+    "label": "Try a different direction",
+    "selection": "Deliberately selected resolver-disagreement case; not a representative shopper"
+  },
+  {
+    "query_index": 2574,
+    "label": "Skin care, 8 purchases",
+    "selection": "LETTER lists the real next purchase and SASRec does not."
+  },
+  {
+    "query_index": 21060,
+    "label": "Tools & accessories, 8 purchases",
+    "selection": "SASRec lists the real next purchase and LETTER does not."
+  },
+  {
+    "query_index": 21667,
+    "label": "Hair care, 9 purchases",
+    "selection": "Both lists include the real next purchase."
+  },
+  {
+    "query_index": 8564,
+    "label": "Fragrance, 11 purchases",
+    "selection": "Neither list includes the real next purchase."
+  }
+]
