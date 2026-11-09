@@ -117,10 +117,10 @@ They write their results to `journeys-validation.json` (and the screenshots in `
 
 ## Deployment
 
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds `web/` and deploys it to Cloudflare on every push to `main` that changes `web/`, following the setup of the [Preferred.AI website](https://github.com/PreferredAI/PreferredAI.github.io). The site is served by a Cloudflare Worker that holds only the static files ([`web/wrangler.jsonc`](web/wrangler.jsonc)). It needs:
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds `web/` and deploys it to Cloudflare Pages on every push to `main` that changes `web/`. It follows the setup of the [Preferred.AI website](https://github.com/PreferredAI/PreferredAI.github.io). It needs:
 
-- a Worker named `cornac-workbench` with the custom domain `cornac-workbench.preferred.ai`;
-- the repository secrets `CLOUDFLARE_API_TOKEN` (with the *Workers Scripts: Edit* permission) and `CLOUDFLARE_ACCOUNT_ID`.
+- a Cloudflare Pages project named `cornac-workbench` with the custom domain `cornac-workbench.preferred.ai`;
+- the repository secrets `CLOUDFLARE_API_TOKEN` (with permission to edit Cloudflare Pages) and `CLOUDFLARE_ACCOUNT_ID`.
 
 
 ## Reproducing the exported data
