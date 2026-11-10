@@ -13,9 +13,15 @@ const demo = fileURLToPath(new URL('../../', import.meta.url));
 const evidence = process.env.JOURNEY_EVIDENCE_DIR || demo;
 const figure = name => path.join(evidence, 'figures', name);
 const json = async name => JSON.parse(await readFile(new URL(`../public/journeys/${name}`, import.meta.url), 'utf8'));
+const state = (pair, id) => json(`${pair}/states/${id}.json`);
 const manifest = await json('manifest.json');
 const media = await json('media.json');
-const question = 'A real shopper bought these 16 products. What did they buy next?';
+const pair = manifest.pairs[0], seed = pair.seeds[0].id;
+const root = await state(pair.id, seed);
+const target = media.targets[seed];
+const short = item => media.items[String(item)].short;
+const listing = (await readFile(path.join(demo, 'paper.tex'), 'utf8')).match(/\\begin\{verbatim\}\n([\s\S]*?)\n\\end\{verbatim\}/)[1];
+const steps = ['Shopper', 'Two recommenders', 'One code', 'You steer', 'Made with Cornac'];
 await mkdir(output, {recursive:true});
 await mkdir(path.join(evidence, 'figures'), {recursive:true});
 const browser = await chromium.launch({headless:true});
@@ -30,17 +36,34 @@ function watch(target) {
 }
 const page = watch(await context.newPage());
 async function check(name, fn) {await fn(); checks.push({name,status:'passed'}); console.log(`PASS ${name}`);}
-// Item indices from data-item; the left diff, right diff and recount use the same shelfDiff rule as the page.
-const shelf = (target, id) => target.getByTestId(id).locator('article[data-item]').evaluateAll(cards => cards.map(card => Number(card.dataset.item)));
-const history = target => target.locator('.journey-timeline li[data-item]').evaluateAll(rows => rows.map(row => Number(row.dataset.item)));
+// Item indices from data-item; the change line and recap are recounted with the page's own rules.
+const items = locator => locator.evaluateAll(rows => rows.map(row => Number(row.dataset.item)));
+const shelf = (target, id) => items(target.getByTestId(id).locator('article[data-item]'));
+const history = target => items(target.locator('.journey-timeline li[data-item]'));
+const ids = cards => cards.map(card => card.item);
 const choose = (target, id) => target.getByTestId(id).getByRole('button', {name:/^Choose /}).first().click();
+const count = (value, word) => `${value.toLocaleString()} ${word}${value === 1 ? '' : 's'}`;
+function shelfDiff(before, after) {
+  const status = after.map((item, i) => {const p = before.indexOf(item); return p < 0 ? 'new' : p === i ? 'same' : 'moved';});
+  return {newCount:status.filter(s => s === 'new').length, movedCount:status.filter(s => s === 'moved').length};
+}
+function codesDiff(before, after) {
+  const [a, b] = [before, after].map(node => node.buckets.map(bucket => bucket.address.join(',')));
+  return {same:a.join('|') === b.join('|'), newCount:b.filter(address => !a.includes(address)).length, total:b.length};
+}
+async function scene(target, n) {
+  await target.locator(`.tour[data-scene="${n}"] .tour-scene h1`).waitFor();
+}
+// Explore screen at a given progress label, with no request in flight.
 async function at(target, text) {
   await target.getByText(text, {exact:true}).waitFor();
   await target.locator('.journey-recommendations[aria-busy="false"]').waitFor();
 }
-function shelfDiff(before, after) {
-  const status = after.map((item, i) => {const p = before.indexOf(item); return p < 0 ? 'new' : p === i ? 'same' : 'moved';});
-  return {newCount:status.filter(s => s === 'new').length, movedCount:status.filter(s => s === 'moved').length};
+// Scene 4 after `depth` choices, with no request in flight (a choice made while busy is ignored).
+async function steered(target, depth) {
+  await target.waitForFunction(n => document.querySelectorAll('.journey-timeline li[data-item]').length === n, root.history.length + depth);
+  await target.locator('.s4-shelves[aria-busy="false"]').waitFor();
+  await target.waitForFunction(() => !document.querySelector('.journey-live')?.textContent.startsWith('Updating'));
 }
 async function settle(target) {
   await target.mouse.move(0, 0);
@@ -53,155 +76,347 @@ async function settle(target) {
   });
   await target.waitForFunction(() => [...document.images].filter(image => image.checkVisibility()).every(image => image.complete));
 }
-async function openHook(viewport) {
+const fits = target => target.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+// Fresh page at a hash such as `#v=tour&sc=2`; `init` runs before the page's own scripts.
+async function openAt(hash, {viewport, init} = {}) {
   const fresh = watch(await context.newPage());
-  await fresh.setViewportSize(viewport);
-  await fresh.goto(url);
-  await fresh.getByTestId('traditional-shelf').getByRole('button', {name:/^Guess /}).first().waitFor();
-  return fresh;
-}
-// Fresh page at a hash such as `#p=...&r=1`; `init` runs before the page's own scripts.
-async function openAt(hash, init) {
-  const fresh = watch(await context.newPage());
+  if (viewport) await fresh.setViewportSize(viewport);
   if (init) await fresh.addInitScript(init);
   await fresh.goto(new URL(hash, url).href);
-  await fresh.locator('article[data-item]').first().waitFor();
-  await fresh.locator('.journey-recommendations[aria-busy="false"]').waitFor();
   return fresh;
 }
 const started = performance.now();
 try {
+  const benchmarks = [];
+  page.on('request', request => {const {pathname} = new URL(request.url()); if (pathname.endsWith('/benchmark.json')) benchmarks.push(pathname);});
   await page.goto(url);
-  await page.getByTestId('traditional-shelf').getByRole('button', {name:/^Guess /}).first().waitFor();
+  await page.locator('.tour-pick').first().waitFor();
   const firstRenderMs = performance.now() - started;
-  await check('page loads with the question and two shelves of five', async () => {
+  await check('scene 1 shows the 16 purchases with photos', async () => {
     assert.match(await page.title(), /Beauty recommendation journeys/);
-    assert.ok(await page.getByRole('heading', {level:1, name:question, exact:true}).isVisible());
     assert.equal(await page.locator('vite-error-overlay').count(), 0);
-    assert.equal(await page.getByTestId('traditional-shelf').locator('article[data-item]').count(), 5);
-    assert.equal(await page.getByTestId('sid-shelf').locator('article[data-item]').count(), 5);
-    assert.equal(await page.locator('.journey-timeline li[data-item]').count(), 16);
-    assert.equal(await page.locator('.journey-timeline li[data-item]:not([hidden])').count(), 6);
+    assert.equal(await page.locator('h1').textContent(), `A real shopper bought these ${root.history.length} beauty products.`);
+    assert.equal(await page.getByText('Step 1 of 5', {exact:true}).count(), 1);
+    assert.deepEqual(await items(page.locator('.tour-photos li[data-item]')), root.history);
+    await page.waitForFunction(() => [...document.querySelectorAll('.tour-photos img, .tour-pick img')].every(image => image.complete));
+    const widths = await page.locator('.tour-photos img').evaluateAll(images => images.map(image => image.naturalWidth));
+    assert.equal(widths.length, 16);
+    assert.ok(widths.every(width => width > 0));
   });
-  await check('product photos load', async () => {
-    await page.waitForFunction(() => [...document.querySelectorAll('.product-shelf img, .journey-timeline li:not([hidden]) img')].every(image => image.complete));
-    const shelfWidths = await page.locator('.product-shelf img').evaluateAll(images => images.map(image => image.naturalWidth));
-    const stripWidths = await page.locator('.journey-timeline li:not([hidden]) img').evaluateAll(images => images.map(image => image.naturalWidth));
-    assert.ok(shelfWidths.length >= 10);
-    assert.ok([...shelfWidths, ...stripWidths].every(width => width > 0));
-  });
-  const seed = manifest.pairs[0].seeds[0].id;
-  await check('reveal marks the real purchase and keeps both lists', async () => {
-    assert.equal(await page.getByRole('button', {name:/^Guess /}).count(), 10);
-    assert.equal(await page.getByRole('button', {name:/^Choose /}).count(), 0);
+  const cards = await items(page.locator('.tour-pick'));
+  await check('four guess cards with distinct names', async () => {
+    assert.equal(cards.length, 4);
+    assert.ok(cards.includes(target));
+    assert.deepEqual(cards, [...cards].sort((a, b) => a - b));
+    const listed = [...root.traditional, ...root.shelves.one_cosine, ...root.shelves.one_popularity].map(card => card.item);
+    for (const item of cards.filter(item => item !== target)) assert.ok(listed.includes(item) && !root.history.includes(item));
+    assert.equal(new Set(await page.locator('.tour-pick-name').allTextContents()).size, 4);
+    assert.ok(await page.getByRole('button', {name:'Just show me', exact:true}).isVisible());
     assert.equal(await page.getByText('They bought this').count(), 0);
-    assert.equal(await page.locator('select').count(), 0);
-    const before = [await shelf(page, 'traditional-shelf'), await shelf(page, 'sid-shelf')];
-    await page.getByRole('button', {name:'Just show me', exact:true}).click();
-    await page.getByRole('heading', {name:'Now you choose. Pick anything and watch both lists react.'}).waitFor();
-    assert.deepEqual([await shelf(page, 'traditional-shelf'), await shelf(page, 'sid-shelf')], before);
-    assert.equal(await page.getByText('They bought this').count(), 1);
-    assert.equal(await page.getByTestId('sid-shelf').getByText('They bought this').count(), 1);
-    assert.equal(await page.getByTestId('sid-shelf').locator('article.is-target').getAttribute('data-item'), String(media.targets[seed]));
-    assert.equal(await page.locator('h1').count(), 1);
-    assert.equal(await page.locator('h1').textContent(), "LETTER had it at #1. SASRec didn't list it.");
-    assert.equal(await page.locator('.journey-question').textContent(), question);
-    assert.equal(await page.locator('.product-shelf').getByRole('button', {name:/^Choose /}).count(), 10);
   });
-  await check('Details shows the evaluation table', async () => {
-    const toggle = page.getByRole('button', {name:'Details', exact:true});
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('.journey-metrics').count(), 0);
-    await toggle.click();
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
-    await page.getByRole('rowheader', {name:'LETTER · SID', exact:true}).waitFor();
-    assert.ok(await page.locator('.journey-metrics').isVisible());
+  await check('a wrong guess shows both badges and the takeaway', async () => {
+    const decoy = cards.find(item => item !== target);
+    await page.locator(`.tour-pick[data-item="${decoy}"]`).click();
+    const real = page.locator(`.tour-pick[data-item="${target}"]`);
+    await real.getByText('They bought this', {exact:true}).waitFor();
+    assert.equal(await page.getByText('They bought this', {exact:true}).count(), 1);
+    assert.equal(await page.locator(`.tour-pick[data-item="${decoy}"]`).getByText('Your guess', {exact:true}).count(), 1);
+    assert.equal(await page.getByText('Your guess', {exact:true}).count(), 1);
+    const name = await real.locator('.tour-pick-name').textContent();
+    assert.equal(name, short(target));
+    assert.equal(await page.locator('.tour-takeaway').textContent(), `It was the ${name}. Hard to guess. Recommenders try this for millions of shoppers.`);
+    assert.equal(await page.getByRole('button', {name:'Just show me'}).count(), 0);
   });
-  await check('shelves sit side by side with aligned rows', async () => {
-    const traditional = await page.getByTestId('traditional-shelf').boundingBox();
-    const sid = await page.getByTestId('sid-shelf').boundingBox();
-    assert.ok(Math.abs(traditional.y - sid.y) < 1);
-    assert.ok(Math.abs(traditional.width - sid.width) < 1);
-    assert.ok(sid.x >= traditional.x + traditional.width);
-    for (let i = 0; i < 5; i++) {
-      const left = await page.getByTestId('traditional-shelf').locator('article[data-item]').nth(i).boundingBox();
-      const right = await page.getByTestId('sid-shelf').locator('article[data-item]').nth(i).boundingBox();
-      assert.ok(Math.abs(left.y - right.y) < 1);
-      assert.ok(Math.abs(left.height - right.height) < 1);
+  await check('Just show me reveals without a guess', async () => {
+    const fresh = await openAt('#v=tour&sc=1');
+    try {
+      await fresh.getByRole('button', {name:'Just show me', exact:true}).click();
+      await fresh.locator(`.tour-pick.is-target[data-item="${target}"]`).getByText('They bought this', {exact:true}).waitFor();
+      assert.equal(await fresh.getByText('Your guess').count(), 0);
+      assert.match(await fresh.locator('.tour-takeaway').textContent(), /^It was the .+\. Hard to guess\. /);
+    } finally {await fresh.close();}
+  });
+  const current = () => page.locator('.tour-steps [aria-current="step"]').textContent();
+  await check('stepper: five steps, Next and Back', async () => {
+    assert.deepEqual(await page.locator('.tour-steps button').allTextContents(), steps);
+    assert.equal(await current(), 'Shopper');
+    assert.ok(await page.getByRole('button', {name:'Back', exact:true}).isDisabled());
+    await page.getByRole('button', {name:'Next', exact:true}).click();
+    await scene(page, 2);
+    assert.equal(await current(), 'Two recommenders');
+    assert.equal(await page.getByText('Step 2 of 5', {exact:true}).count(), 1);
+    assert.equal(await page.locator('.tour-steps li.is-reached').count(), 2);
+    assert.equal(await page.evaluate(() => document.activeElement.tagName), 'H1');
+    assert.match(await page.evaluate(() => location.hash), /&v=tour&sc=2$/);
+    await page.getByRole('button', {name:'Back', exact:true}).click();
+    await scene(page, 1);
+    assert.equal(await current(), 'Shopper');
+  });
+  await check('arrow keys and step dots move between scenes', async () => {
+    await page.keyboard.press('ArrowRight');
+    await scene(page, 2);
+    await page.keyboard.press('ArrowLeft');
+    await scene(page, 1);
+    await page.locator('.tour-steps button', {hasText:'One code'}).click();
+    await scene(page, 3);
+    assert.equal(await current(), 'One code');
+    await page.locator('.tour-steps button', {hasText:'Two recommenders'}).click();
+    await scene(page, 2);
+  });
+  await check('scene 2: two lists of five, the real purchase on the code side', async () => {
+    assert.equal(await page.locator('h1').textContent(), `Two models saw the same ${root.history.length} purchases.`);
+    assert.equal(await page.locator('.tour-reveal').textContent(), "LETTER had it at #1. SASRec didn't list it.");
+    const left = page.getByTestId('tour-traditional-list'), right = page.getByTestId('tour-semantic-list');
+    assert.deepEqual(await items(left.locator('li[data-item]')), ids(root.traditional));
+    assert.deepEqual(await items(right.locator('li[data-item]')), ids(root.shelves.one_cosine));
+    assert.equal(await right.getByText('They bought this', {exact:true}).count(), 1);
+    assert.equal(await right.locator('li.is-target').getAttribute('data-item'), String(target));
+    assert.equal(await left.getByText('They bought this').count(), 0);
+    assert.deepEqual(await page.locator('.tour-column-head h2').allTextContents(), ['Ranks products', 'Predicts a code first']);
+    assert.deepEqual(await page.locator('.tour-column-head .model-name').allTextContents(), ['SASRec', 'LETTER']);
+    assert.equal(await page.locator('.tour-takeaway').textContent(), "LETTER's first code was right. Now look at that code.");
+  });
+  await settle(page);
+  await page.screenshot({path:figure('journeys-desktop.png'), fullPage:true, animations:'disabled'});
+  const bert = await openAt('#p=bert-mlm-letter&v=tour&sc=2');
+  try {
+    await scene(bert, 2);
+    await bert.getByTestId('tour-semantic-list').getByText('They bought this', {exact:true}).waitFor();
+    assert.deepEqual(await bert.locator('.tour-column-head .model-name').allTextContents(), ['BERT4Rec (MLM)', 'LETTER']);
+    await settle(bert);
+    await bert.screenshot({path:figure('journeys-desktop-bert-mlm.png'), fullPage:true, animations:'disabled'});
+  } finally {await bert.close();}
+  const bucket = root.buckets[0];
+  const card = () => page.locator('.s3-card').getAttribute('data-item');
+  await check('scene 3: one code, 1,643 products in six categories', async () => {
+    await page.getByRole('button', {name:'Next', exact:true}).click();
+    await scene(page, 3);
+    assert.equal(bucket.size, 1643);
+    assert.equal(await page.locator('h1').textContent(), 'One code, 1,643 products.');
+    assert.equal(await page.locator('.s3-code').textContent(), `code ${bucket.address.join('·')}`);
+    assert.equal(await page.getByRole('heading', {name:"What's in this code", exact:true}).count(), 1);
+    const rows = await page.locator('.bucket-breakdown li').evaluateAll(lis => lis.map(li => [li.querySelector('span').textContent, Number(li.querySelector('strong').textContent.replace(/\D/g, ''))]));
+    assert.deepEqual(rows, media.buckets[pair.sid][bucket.address.join(',')].categories);
+    assert.equal(rows.length, 6);
+    assert.equal(rows.reduce((sum, [, value]) => sum + value, 0), 1643);
+    assert.equal(await card(), String(bucket.cosine[0].item));
+    assert.equal(await page.locator('.s3-card').getByText('They bought this').count(), 1);
+    assert.equal(await page.locator('.tour-takeaway').count(), 0);
+  });
+  await check('scene 3: the picking rule swaps 695 and 2739', async () => {
+    assert.deepEqual([bucket.popularity[0].item, bucket.cosine[0].item], [695, 2739]);
+    await page.getByRole('radio', {name:'Most popular'}).check();
+    await page.waitForFunction(() => document.querySelector('.s3-card')?.dataset.item === '695');
+    assert.match(await page.evaluate(() => location.hash), /s=one_popularity/);
+    assert.equal(await page.locator('.tour-takeaway').textContent(), 'That is why Cornac scores code models three ways.');
+    const metrics = (await json(pair.benchmark)).metrics;
+    const scores = await page.locator('.s3-scores dd').allTextContents();
+    assert.deepEqual(scores, ['0.196', '0.017', '0.004']);
+    assert.deepEqual(scores, [metrics.sid, metrics.one_cosine, metrics.cce].map(row => row.recall.toFixed(3)));
+    assert.deepEqual(await page.locator('.s3-scores dt').allTextContents(), ['Right code', 'Right product', 'Collision-corrected']);
+    for (const [key, item] of [['ArrowRight', '2739'], ['ArrowLeft', '695'], ['ArrowRight', '2739']]) {
+      await page.keyboard.press(key);
+      await page.waitForFunction(value => document.querySelector('.s3-card')?.dataset.item === value, item);
     }
+    assert.equal(await page.locator('.tour').getAttribute('data-scene'), '3');
+    assert.match(await page.evaluate(() => location.hash), /s=one_cosine/);
   });
-  const initialHistory = await history(page);
-  await check('four item strategies change the right shelf, not the history', async () => {
-    const shelves = [];
-    for (const policy of ['one_popularity','one_cosine','expand_popularity','expand_cosine']) {
+  await check('scene 3 on RPG: one code, one product', async () => {
+    const rpg = await openAt('#p=sasrec-rpg&v=tour&sc=3');
+    try {
+      await scene(rpg, 3);
+      assert.equal(await rpg.locator('h1').textContent(), 'One code, one product.');
+      assert.equal(await rpg.locator('.tour-body').textContent(), 'Every code here names exactly one product, so the three scores agree.');
+      assert.equal(await rpg.getByRole('radiogroup').count(), 0);
+      assert.equal(await rpg.locator('.bucket-breakdown').count(), 0);
+      await rpg.locator('.s3-scores dd').nth(2).waitFor();
+    } finally {await rpg.close();}
+  });
+  let choiceMs;
+  const [first] = ids(root.traditional);
+  const next = await state(pair.id, root.next[String(first)]);
+  await check('scene 4: a choice loads the stored next state', async () => {
+    await page.getByRole('button', {name:'Next', exact:true}).click();
+    await scene(page, 4);
+    assert.equal(await page.locator('h1').textContent(), 'Add a purchase and watch both lists.');
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(root.traditional));
+    assert.deepEqual(await shelf(page, 'sid-shelf'), ids(root.shelves.one_cosine));
+    assert.equal(await page.locator('.journey-timeline li[data-item]:not([hidden])').count(), 6);
+    assert.ok(await page.getByRole('button', {name:'Undo', exact:true}).isDisabled());
+    const begin = performance.now();
+    await choose(page, 'traditional-shelf');
+    await page.locator('.s4-change').filter({hasText:/rewrote|kept/}).waitFor();
+    choiceMs = performance.now() - begin;
+    await steered(page, 1);
+    assert.deepEqual(await history(page), next.history);
+    assert.equal(next.history.at(-1), first);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(next.traditional));
+    assert.deepEqual(await shelf(page, 'sid-shelf'), ids(next.shelves.one_cosine));
+    assert.equal(await page.locator('.journey-timeline li[data-item]').last().locator('small').textContent(), 'Yours');
+    assert.match(await page.evaluate(() => location.hash), /[#&]t=[^&,]+&/);
+  });
+  await check('scene 4: the change line matches a recount', async () => {
+    const left = shelfDiff(ids(root.traditional), ids(next.traditional));
+    const right = shelfDiff(ids(root.shelves.one_cosine), ids(next.shelves.one_cosine));
+    const codes = codesDiff(root, next);
+    const traditional = left.newCount === 5 ? 'SASRec rewrote all 5 of its picks.' : left.newCount ? `SASRec rewrote ${left.newCount} of its 5 picks.`
+      : left.movedCount ? 'SASRec kept the same picks in a new order.' : 'SASRec kept the same 5 picks.';
+    const sid = codes.same ? `LETTER kept the same ${codes.total} codes.` : codes.newCount ? `LETTER predicted ${count(codes.newCount, 'new code')}.` : 'LETTER kept the same codes in a new order.';
+    assert.equal(await page.locator('.s4-change').textContent(), `${traditional} ${sid}`);
+    assert.equal(await page.getByTestId('traditional-shelf').locator('article.is-new').count(), left.newCount);
+    assert.equal(await page.getByTestId('sid-shelf').locator('article.is-new').count(), right.newCount);
+  });
+  await check('scene 4: Undo goes back to the start', async () => {
+    await page.getByRole('button', {name:'Undo', exact:true}).click();
+    await steered(page, 0);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(root.traditional));
+    assert.equal(await page.locator('.s4-change').textContent(), '');
+  });
+  const probe = pair.same_bucket_probe;
+  const swapped = await state(pair.id, root.next[String(probe.items[1])]);
+  await check('scene 4: two products that share a code', async () => {
+    await page.getByRole('button', {name:'Try two products that share a code', exact:true}).click();
+    const step = page.getByTestId('same-sid-step');
+    assert.equal(await step.locator('.code-pill').textContent(), `code ${probe.address.join('·')} · 1,643 products`);
+    await step.getByRole('button', {name:`Choose ${short(probe.items[0])}`, exact:true}).click();
+    await steered(page, 1);
+    const picked = await state(pair.id, root.next[String(probe.items[0])]);
+    assert.equal((await history(page)).at(-1), probe.items[0]);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(picked.traditional));
+    await step.getByRole('button', {name:`Try ${short(probe.items[1])} instead`, exact:true}).click();
+    await page.waitForFunction(item => document.querySelector('.journey-timeline li:last-child')?.dataset.item === item, String(probe.items[1]));
+    await steered(page, 1);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(swapped.traditional));
+    assert.notDeepEqual(ids(swapped.traditional), ids(picked.traditional));
+    assert.ok(codesDiff(picked, swapped).same);
+    const result = codesDiff(root, swapped).same ? 'Same codes on the right. ' : '';
+    assert.equal(await step.locator('p').textContent(), `${result}${shelfDiff(ids(root.traditional), ids(swapped.traditional)).newCount} new on the left.`);
+  });
+  await check('scene 4: second choice gives the recap and ten final suggestions', async () => {
+    const [second] = ids(swapped.shelves.one_cosine);
+    const last = await state(pair.id, swapped.next[String(second)]);
+    await choose(page, 'sid-shelf');
+    await steered(page, 2);
+    assert.deepEqual(await history(page), last.history);
+    const changed = [[root, swapped], [swapped, last]].map(([a, b]) => shelfDiff(ids(a.traditional), ids(b.traditional)).newCount);
+    const phrase = codes => codes.same ? 'kept the same codes' : codes.newCount ? `predicted ${count(codes.newCount, 'new code')}` : 'reordered its codes';
+    const [one, two] = [codesDiff(root, swapped), codesDiff(swapped, last)].map(phrase);
+    assert.equal(await page.locator('.s4-bar .tour-takeaway').textContent(),
+      `You picked ${short(probe.items[1])}, then ${short(second)}. SASRec changed ${changed[0]} then ${changed[1]} picks; LETTER ${one === two ? `${one} both times` : `${one}, then ${two}`}.`);
+    assert.equal(await page.getByRole('button', {name:/^Final suggestion: /}).count(), 10);
+    assert.equal(await page.locator('.choose-product:not(:disabled)').count(), 0);
+  });
+  await check('scene 5: the paper listing and the eight-pair chart', async () => {
+    assert.deepEqual(benchmarks, [`/journeys/${pair.benchmark}`]);
+    await page.getByRole('button', {name:'Next', exact:true}).click();
+    await scene(page, 5);
+    assert.equal(await page.locator('h1').textContent(), 'Everything you saw came from one Cornac experiment.');
+    assert.equal(await page.locator('.s5-listing').textContent(), listing);
+    const chart = page.locator('.recall-chart svg');
+    await chart.waitFor();
+    // One path per bar: SASRec and BERT4Rec item recall, then three bars for each of the four code models.
+    assert.equal(await chart.locator('path').count(), 2 + 4 * 3);
+    assert.deepEqual([...benchmarks].sort(), manifest.pairs.map(row => `/journeys/${row.benchmark}`).sort());
+    assert.deepEqual(await page.locator('.chart-legend li').allTextContents(), ['Right product', 'Right code', 'Collision-corrected', 'Code models: Closest to this history']);
+    assert.equal(await page.locator('.s5-pip').textContent(), 'pip install cornac');
+    assert.equal(await page.getByRole('button', {name:'Next', exact:true}).count(), 0);
+    assert.equal(await page.getByRole('button', {name:'Skip tour'}).count(), 0);
+  });
+  await check('scene 5: QR code and Share this journey', async () => {
+    await page.locator('.s5-qr svg').waitFor();
+    assert.equal(await page.locator('.s5-qr a').getAttribute('href'), 'https://github.com/PreferredAI/cornac');
+    await page.getByRole('button', {name:'Share this journey', exact:true}).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('.share-qr svg').waitFor();
+    const link = await page.evaluate(() => location.href.replace(/&v=tour&sc=5$/, ''));
+    assert.match(link, /#p=sasrec-letter&h=\w+&s=one_cosine&t=\w+,\w+&r=1$/);
+    assert.equal(await dialog.locator('input[readonly]').inputValue(), link);
+    assert.ok(await dialog.getByRole('button', {name:'Copy link', exact:true}).isVisible());
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({state:'detached'});
+  });
+  await check('Explore freely, then Start over', async () => {
+    await page.getByRole('button', {name:'Explore freely', exact:true}).click();
+    await at(page, 'Journey complete');
+    assert.equal(await page.locator('.tour').count(), 0);
+    assert.match(await page.evaluate(() => location.hash), /&v=explore$/);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'recommendations-heading');
+    assert.equal(await page.getByRole('button', {name:/^Final suggestion: /}).count(), 10);
+    await page.getByRole('button', {name:'Back to the tour', exact:true}).click();
+    await scene(page, 5);
+    await page.getByRole('button', {name:'Start over', exact:true}).click();
+    await scene(page, 1);
+    assert.equal(await page.evaluate(() => location.hash), '#v=tour&sc=1');
+    await page.getByRole('button', {name:'Just show me', exact:true}).waitFor();
+    assert.equal(await page.getByText('They bought this').count(), 0);
+  });
+  await check('Skip tour opens explore; Back to the tour returns', async () => {
+    await page.getByRole('button', {name:'Skip tour', exact:true}).click();
+    await at(page, 'Choice 1 of 2');
+    assert.match(await page.evaluate(() => location.hash), /&v=explore$/);
+    assert.equal(await page.getByTestId('sid-shelf').locator('article.is-target').getAttribute('data-item'), String(target));
+    await page.getByRole('button', {name:'Back to the tour', exact:true}).click();
+    await scene(page, 1);
+    assert.match(await page.evaluate(() => location.hash), /&v=tour&sc=1$/);
+  });
+  await check('hash v=tour&sc=N round trip', async () => {
+    const fresh = await openAt('#v=tour&sc=2');
+    try {
+      await scene(fresh, 2);
+      await fresh.getByRole('button', {name:'Next', exact:true}).click();
+      await scene(fresh, 3);
+      const hash = await fresh.evaluate(() => location.hash);
+      assert.equal(hash, `#p=sasrec-letter&h=${seed}&s=one_cosine&r=1&v=tour&sc=3`);
+      await fresh.reload();
+      await scene(fresh, 3);
+      assert.equal(await fresh.evaluate(() => location.hash), hash);
+    } finally {await fresh.close();}
+  });
+  await page.getByRole('button', {name:'Skip tour', exact:true}).click();
+  await at(page, 'Choice 1 of 2');
+  const model = side => page.locator(`.${side}-heading .model-name`).textContent();
+  // Re-selecting the current pair may not fire a change, so Restart stands in for it.
+  async function pick(row) {
+    if (await page.getByLabel('Journey model pair').inputValue() === row.id) await page.getByRole('button', {name:'Restart', exact:true}).click();
+    else await page.getByLabel('Journey model pair').selectOption(row.id);
+    await page.waitForFunction(name => document.querySelector('.semantic-heading .model-name')?.textContent === name, row.sid);
+    await at(page, 'Choice 1 of 2');
+  }
+  await check('explore: eight pairs load with the policy menu', async () => {
+    assert.equal(manifest.pairs.length, 8);
+    for (const row of manifest.pairs) {
+      await pick(row);
+      const start = await state(row.id, row.seeds[0].id);
+      assert.equal(await model('traditional'), row.traditional);
+      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(start.traditional));
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(start.shelves.one_cosine));
+      const single = start.buckets.every(entry => entry.size === 1);
+      assert.equal(await page.getByLabel('SID to item strategy').count(), single ? 0 : 1, row.id);
+      assert.equal(await page.getByText('One product per code', {exact:true}).count(), single ? 1 : 0, row.id);
+    }
+    await pick(pair);
+    for (const policy of manifest.strategies) {
       await page.getByLabel('SID to item strategy').selectOption(policy);
-      shelves.push(await shelf(page, 'sid-shelf'));
-      assert.deepEqual(await history(page), initialHistory);
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(root.shelves[policy]));
+      assert.deepEqual(await history(page), root.history);
     }
-    assert.notDeepEqual(shelves[0], shelves[1]);
-    assert.notDeepEqual(shelves[1], shelves[3]);
+    await page.getByLabel('SID to item strategy').selectOption('one_cosine');
   });
-  await check('bucket inspector lists other products and scores', async () => {
+  await check('explore: bucket Inspector', async () => {
     await page.getByTestId('sid-shelf').locator('.bucket-link').first().click();
-    await page.getByRole('heading', {name:/One SID,/}).waitFor();
-    assert.equal(await page.locator('.bucket-columns h3').count(), 2);
+    await page.getByRole('heading', {name:'One code, 1,643 products', exact:true}).waitFor();
+    assert.equal(await page.locator('.journey-inspector .sid-code').textContent(), `code ${bucket.address.join('·')}`);
+    const counts = await page.locator('.journey-inspector .bucket-breakdown li strong').allTextContents();
+    assert.equal(counts.reduce((sum, text) => sum + Number(text.replace(/\D/g, '')), 0), 1643);
+    assert.deepEqual(await page.locator('.bucket-columns h3').allTextContents(), ['Most popular', 'Closest to this history']);
     assert.ok(await page.locator('.bucket-columns li').count() > 2);
     await page.getByRole('button', {name:'Close bucket inspector'}).click();
     assert.equal(await page.locator('.journey-inspector').count(), 0);
   });
-  const fixedMetrics = await page.locator('.journey-metrics').innerText();
-  const beforeChoice = [await shelf(page, 'traditional-shelf'), await shelf(page, 'sid-shelf')];
-  let choiceMs, afterChoice;
-  await check('a choice updates both shelves and keeps the evaluation table', async () => {
-    const selected = beforeChoice[0][0];
-    const begin = performance.now();
+  await check('explore: Save and Replay; a tampered file is rejected', async () => {
     await choose(page, 'traditional-shelf');
     await at(page, 'Choice 2 of 2');
-    await page.getByRole('status').filter({hasText:/new on the left|Nothing changed/}).waitFor();
-    choiceMs = performance.now() - begin;
-    assert.deepEqual(await history(page), [...initialHistory, selected]);
-    assert.equal(await page.locator('.journey-timeline li[data-item]').last().locator('small').textContent(), 'Yours');
-    assert.equal(await page.locator('.journey-metrics').innerText(), fixedMetrics);
-    afterChoice = [await shelf(page, 'traditional-shelf'), await shelf(page, 'sid-shelf')];
-    assert.equal(afterChoice[0].length, 5);
-    assert.equal(afterChoice[1].length, 5);
-  });
-  await check('change line matches a recount of both shelves', async () => {
-    const [left, right] = [0, 1].map(i => shelfDiff(beforeChoice[i], afterChoice[i]));
-    const text = left.newCount || right.newCount || left.movedCount || right.movedCount
-      ? `${left.newCount} new on the left, ${right.newCount} on the right.` : 'Nothing changed.';
-    assert.equal(await page.locator('.change-line > p').textContent(), text);
-    assert.equal(await page.locator('.journey-live').textContent(), text);
-    assert.equal(await page.getByTestId('traditional-shelf').locator('article.is-new').count(), left.newCount);
-    assert.equal(await page.getByTestId('sid-shelf').locator('article.is-new').count(), right.newCount);
-    assert.equal(await page.locator('article.is-moved').count(), left.movedCount + right.movedCount);
-    await page.getByRole('button', {name:'Why?', exact:true}).click();
-    assert.equal(await page.locator('.why p').count(), 2);
-  });
-  await check('second choice ends the journey and Undo goes back', async () => {
-    const previous = await shelf(page, 'sid-shelf');
-    await choose(page, 'sid-shelf');
-    await page.getByRole('heading', {name:'Final recommendations', exact:true}).waitFor();
-    assert.equal(await page.getByRole('button', {name:/^Final suggestion:/}).count(), 10);
-    assert.equal(await page.locator('.choose-product:not(:disabled)').count(), 0);
-    await page.getByRole('button', {name:'Undo', exact:true}).click();
-    await at(page, 'Choice 2 of 2');
-    assert.deepEqual(await shelf(page, 'sid-shelf'), previous);
-  });
-  await check('recap shows what happened and its actions work', async () => {
-    await choose(page, 'sid-shelf');
-    await at(page, 'Journey complete');
-    await page.getByRole('heading', {name:'What happened', exact:true}).waitFor();
-    assert.match(await page.locator('.journey-recap p').first().textContent(), /^You picked .+, then .+\.$/);
-    const link = page.getByRole('link', {name:'Get Cornac'});
-    assert.equal(await link.getAttribute('href'), 'https://github.com/PreferredAI/cornac');
-    assert.equal(await link.getAttribute('target'), '_blank');
-    await page.getByRole('button', {name:'Another model', exact:true}).click();
-    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'Journey model pair');
-    await page.getByRole('button', {name:'Undo', exact:true}).click();
-    await at(page, 'Choice 2 of 2');
-  });
-  await check('save and replay restore the journey and reject a tampered file', async () => {
+    const saved = await history(page);
     const waiting = page.waitForEvent('download'); await page.getByRole('button', {name:'Save journey', exact:true}).click();
     const download = await waiting; const file = path.join(output, download.suggestedFilename()); await download.saveAs(file);
     await page.getByRole('button', {name:'Restart', exact:true}).click();
@@ -209,6 +424,7 @@ try {
     await page.getByLabel('Journey replay file').setInputFiles(file);
     await page.getByRole('status').filter({hasText:/Journey restored/}).waitFor();
     await at(page, 'Choice 2 of 2');
+    assert.deepEqual(await history(page), saved);
     const corrupted = JSON.parse(await readFile(file, 'utf8')); corrupted.history[0] = -1;
     const bad = path.join(output, 'tampered.json'); await writeFile(bad, JSON.stringify(corrupted));
     await page.getByLabel('Journey replay file').setInputFiles(bad);
@@ -216,287 +432,93 @@ try {
     await page.getByLabel('Journey replay file').setInputFiles(file);
     await page.getByRole('alert').waitFor({state:'detached'});
     await page.getByRole('status').filter({hasText:/Journey restored/}).waitFor();
-    assert.equal(await page.getByRole('alert').count(), 0);
-  });
-  await check('changing the story restarts and keyboard choice works', async () => {
-    await page.getByLabel('Starting story').selectOption({index:1});
-    await at(page, 'Choice 1 of 2');
-    assert.equal(await page.locator('.attendee-choice').count(), 0);
-    await page.getByTestId('traditional-shelf').getByRole('button', {name:/^Choose /}).first().focus();
-    await page.keyboard.press('Enter');
-    await at(page, 'Choice 2 of 2');
-  });
-  await check('changing the story cancels a choice in flight', async () => {
-    const roots = manifest.pairs[0].seeds.map(row => row.id);
-    const racePage = watch(await context.newPage());
-    let release;
-    const pending = new Promise(resolve => {release = resolve;});
-    await racePage.route('**/states/*.json', async route => {
-      const id = new URL(route.request().url()).pathname.split('/').pop().replace('.json', '');
-      if (!roots.includes(id)) await pending;
-      await route.continue();
-    });
-    try {
-      await racePage.goto(url);
-      await racePage.getByRole('button', {name:'Just show me', exact:true}).click();
-      await choose(racePage, 'traditional-shelf');
-      await racePage.getByRole('status').filter({hasText:'Updating recommendations…'}).waitFor();
-      await racePage.getByLabel('Starting story').selectOption(roots[1]);
-      await at(racePage, 'Choice 1 of 2');
-      const expected = await history(racePage);
-      release();
-      await racePage.waitForLoadState('networkidle');
-      assert.deepEqual(await history(racePage), expected);
-      assert.equal(await racePage.locator('.attendee-choice').count(), 0);
-      assert.ok(await racePage.getByText('Choice 1 of 2', {exact:true}).isVisible());
-    } finally {release(); await racePage.close();}
-  });
-  await check('a guess is marked and the real purchase revealed', async () => {
-    const guessPage = await openHook({width:1440, height:1000});
-    try {
-      const guessed = (await shelf(guessPage, 'traditional-shelf'))[1];
-      await guessPage.getByTestId('traditional-shelf').getByRole('button', {name:/^Guess /}).nth(1).click();
-      await guessPage.getByText('Your guess', {exact:true}).waitFor();
-      assert.equal(await guessPage.locator('.guess-pill').count(), 1);
-      assert.equal(await guessPage.locator('article:has(.guess-pill)').getAttribute('data-item'), String(guessed));
-      assert.equal(await guessPage.getByTestId('sid-shelf').getByText('They bought this').count(), 1);
-      assert.ok(await guessPage.evaluate(() => Boolean(document.activeElement?.closest('.is-target'))));
-      assert.equal(await guessPage.getByRole('button', {name:/^Guess /}).count(), 0);
-    } finally {await guessPage.close();}
-  });
-  await check('same-code step: either product, different left shelf', async () => {
-    const probed = manifest.pairs.filter(pair => pair.same_bucket_probe);
-    assert.deepEqual(probed.map(pair => pair.id), ['sasrec-letter','bert-mlm-letter']);
-    const last = () => page.locator('.journey-timeline li[data-item]').last().getAttribute('data-item');
-    for (const pair of probed) {
-      const probe = pair.same_bucket_probe;
-      assert.ok(probe.native_addresses_equal);
-      assert.equal(probe.traditional_top5_equal, false);
-      await page.getByLabel('Journey model pair').selectOption(pair.id);
-      await page.getByLabel('Starting story').selectOption(probe.seed);
-      await at(page, 'Choice 1 of 2');
-      const step = page.getByTestId('same-sid-step');
-      await step.getByRole('button', {name:/^Choose /}).first().click();
-      await at(page, 'Choice 2 of 2');
-      assert.equal(await last(), String(probe.items[0]));
-      const first = await shelf(page, 'traditional-shelf');
-      await step.getByRole('button', {name:/^Try .* instead$/}).click();
-      await page.waitForFunction(item => document.querySelector('.journey-timeline li:last-child')?.dataset.item === item, String(probe.items[1]));
-      await at(page, 'Choice 2 of 2');
-      const swapped = await shelf(page, 'traditional-shelf');
-      assert.notDeepEqual(swapped, first);
-      await page.getByRole('button', {name:'Undo', exact:true}).click();
-      await at(page, 'Choice 1 of 2');
-      await step.getByRole('button', {name:/^Choose /}).nth(1).click();
-      await at(page, 'Choice 2 of 2');
-      assert.equal(await last(), String(probe.items[1]));
-      assert.deepEqual(await shelf(page, 'traditional-shelf'), swapped);
-    }
-  });
-  await check('each model pair restarts with its own evaluation table', async () => {
-    for (const pair of manifest.pairs) {
-      await page.getByLabel('Journey model pair').selectOption(pair.id);
-      await page.getByRole('button', {name:'Restart', exact:true}).click();
-      await at(page, 'Choice 1 of 2');
-      await page.getByRole('rowheader', {name:`${pair.sid} · SID`, exact:true}).waitFor();
-      assert.equal(await page.locator('.traditional-heading .model-name').textContent(), pair.traditional);
-      assert.equal(await page.locator('.attendee-choice').count(), 0);
-      assert.equal(await page.getByTestId('traditional-shelf').locator('article[data-item]').count(), 5);
-      assert.equal(await page.getByTestId('sid-shelf').locator('article[data-item]').count(), 5);
-      await choose(page, 'sid-shelf');
-      await at(page, 'Choice 2 of 2');
-    }
-  });
-  await check('RPG pair shows one product per code and no strategy menu', async () => {
-    await page.getByLabel('Journey model pair').selectOption('sasrec-rpg');
-    await at(page, 'Choice 1 of 2');
-    assert.ok(await page.getByText('One product per code', {exact:true}).isVisible());
-    assert.equal(await page.getByLabel('SID to item strategy').count(), 0);
-  });
-  await check('BERT4Rec and TIGER journey saves and replays', async () => {
-    await page.getByLabel('Journey model pair').selectOption('bert-mlm-tiger');
-    await page.getByRole('button', {name:'Restart', exact:true}).click();
-    await at(page, 'Choice 1 of 2');
-    await page.getByRole('rowheader', {name:'TIGER · SID', exact:true}).waitFor();
-    await choose(page, 'sid-shelf');
-    await at(page, 'Choice 2 of 2');
-    const saved = await history(page);
-    const waiting = page.waitForEvent('download'); await page.getByRole('button', {name:'Save journey', exact:true}).click();
-    const file = path.join(output, 'bert-mlm-tiger-journey.json'); await (await waiting).saveAs(file);
-    assert.equal(JSON.parse(await readFile(file, 'utf8')).provenance.traditional_model, 'BERT4Rec (MLM)');
-    await page.getByRole('button', {name:'Restart', exact:true}).click();
-    await at(page, 'Choice 1 of 2');
-    await page.getByLabel('Journey replay file').setInputFiles(file);
-    await page.getByRole('status').filter({hasText:/Journey restored/}).waitFor();
-    await at(page, 'Choice 2 of 2');
     assert.deepEqual(await history(page), saved);
-    assert.equal(await page.getByRole('alert').count(), 0);
   });
-  // Desktop screenshots: revealed, Details on, default item strategy.
-  for (const [pair, name] of [['bert-mlm-letter','journeys-desktop-bert-mlm.png'], ['sasrec-letter','journeys-desktop.png']]) {
-    const row = manifest.pairs.find(p => p.id === pair);
-    await page.getByLabel('Journey model pair').selectOption(pair);
-    await at(page, 'Choice 1 of 2');
-    await page.getByLabel('SID to item strategy').selectOption('one_cosine');
-    await page.getByRole('rowheader', {name:`${row.traditional} · Item`, exact:true}).waitFor();
-    await page.getByRole('rowheader', {name:`${row.sid} · SID`, exact:true}).waitFor();
-    await settle(page);
-    await page.screenshot({path:figure(name), fullPage:true, animations:'disabled'});
-  }
-  await check('no horizontal overflow; first view fits desktop and phone', async () => {
-    for (const [width, height] of [[1440,1000],[1024,768],[390,844]]) {
-      await page.setViewportSize({width, height});
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      const traditional = await page.getByTestId('traditional-shelf').boundingBox();
-      const sid = await page.getByTestId('sid-shelf').boundingBox();
-      if (width >= 1024) assert.ok(Math.abs(traditional.y - sid.y) < 1);
-      else assert.ok(sid.y >= traditional.y + traditional.height);
+  await check('explore: Details shows the chart and the table', async () => {
+    const toggle = page.getByRole('button', {name:'Details', exact:true});
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('.journey-metrics').count(), 0);
+    await toggle.click();
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+    await page.getByRole('rowheader', {name:'LETTER · SID', exact:true}).waitFor();
+    assert.ok(await page.locator('.journey-metrics').isVisible());
+    await page.locator('.recall-chart svg').waitFor();
+    assert.deepEqual(await page.locator('.chart-legend li').allTextContents(), ['Item', 'SID', 'CCE', 'SID models: One per SID · History cosine']);
+  });
+  await check('every pair lists the same six histories', async () => {
+    const seeds = pair.seeds.map(row => row.id);
+    assert.equal(seeds.length, 6);
+    assert.deepEqual(pair.seeds.slice(0, 2).map(row => row.query_index), [145, 210]);
+    for (const row of manifest.pairs) {
+      assert.deepEqual(row.seeds.map(entry => entry.id), seeds, `${row.id} lists other histories`);
+      await pick(row);
+      assert.deepEqual(await page.getByLabel('Starting story').locator('option').evaluateAll(options => options.map(option => option.value)), seeds, row.id);
     }
-    const desktop = await openHook({width:1440, height:1000});
-    try {
-      for (const id of ['traditional-shelf','sid-shelf']) {
-        const box = await desktop.getByTestId(id).boundingBox();
-        assert.ok(box.y + box.height <= 1000);
-      }
-    } finally {await desktop.close();}
-    const mobile = await openHook({width:390, height:844});
-    try {
-      assert.ok((await mobile.locator('article[data-item]').first().boundingBox()).y < 844);
-      assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      await settle(mobile);
-      await mobile.screenshot({path:figure('journeys-mobile.png'), fullPage:true, animations:'disabled'});
-      await mobile.screenshot({path:figure('journeys-mobile-viewport.png'), fullPage:false, animations:'disabled'});
-    } finally {await mobile.close();}
-  });
-  await check('hash restores a journey', async () => {
-    const seedId = manifest.pairs.find(pair => pair.id === 'bert-mlm-letter').seeds[1].id;
-    const restored = await openAt(`#p=bert-mlm-letter&h=${seedId}&s=one_popularity&r=1`);
-    try {
-      assert.equal(await restored.getByLabel('Journey model pair').inputValue(), 'bert-mlm-letter');
-      assert.equal(await restored.getByLabel('Starting story').inputValue(), seedId);
-      assert.equal(await restored.getByLabel('SID to item strategy').inputValue(), 'one_popularity');
-      assert.equal(await restored.getByText('They bought this', {exact:true}).count(), 1);
-      await choose(restored, 'traditional-shelf');
-      await at(restored, 'Choice 2 of 2');
-      assert.match(await restored.evaluate(() => location.hash), /[#&]t=[^&]+/);
-      const walked = await history(restored);
-      await restored.reload();
-      await at(restored, 'Choice 2 of 2');
-      assert.deepEqual(await history(restored), walked);
-    } finally {await restored.close();}
-  });
-  await check('share panel shows a QR of the link', async () => {
-    // The reveal writes the hash, so location.href is the journey link.
-    const shared = await openHook({width:1440, height:1000});
-    try {
-      await shared.getByRole('button', {name:'Just show me', exact:true}).click();
-      await at(shared, 'Choice 1 of 2');
-      const button = shared.getByRole('button', {name:'Share', exact:true});
-      await button.click();
-      const dialog = shared.getByRole('dialog');
-      await dialog.locator('.share-qr svg').waitFor();
-      assert.equal(await dialog.locator('input[readonly]').inputValue(), await shared.evaluate(() => location.href));
-      assert.ok(await dialog.getByRole('button', {name:'Copy link', exact:true}).isVisible());
-      await shared.keyboard.press('Escape');
-      await dialog.waitFor({state:'detached'});
-      assert.ok(await button.evaluate(element => element === document.activeElement));
-    } finally {await shared.close();}
-  });
-  await check('details chart covers all eight pairs', async () => {
-    const charted = watch(await context.newPage());
-    const fetched = [];
-    charted.on('request', request => {const {pathname} = new URL(request.url()); if (pathname.endsWith('/benchmark.json')) fetched.push(pathname);});
-    try {
-      await charted.goto(url);
-      await charted.getByRole('button', {name:'Just show me', exact:true}).click();
-      await at(charted, 'Choice 1 of 2');
-      assert.equal(fetched.length, 1);
-      await charted.getByRole('button', {name:'Details', exact:true}).click();
-      const chart = charted.locator('.recall-chart svg');
-      await chart.waitFor();
-      assert.match(await chart.getAttribute('aria-label'), /^Recall@5 by model\. /);
-      // One path per bar: SASRec and BERT4Rec item recall, then Item, SID and CCE for each of the four SID models.
-      assert.equal(await chart.locator('path').count(), 2 + 4 * 3);
-      assert.equal(fetched.length, 8);
-      assert.deepEqual([...fetched].sort(), manifest.pairs.map(pair => `/journeys/${pair.benchmark}`).sort());
-    } finally {await charted.close();}
-  });
-  await check('bucket view shows categories', async () => {
-    const bucketPage = await openHook({width:1440, height:1000});
-    try {
-      await bucketPage.getByRole('button', {name:'Just show me', exact:true}).click();
-      await at(bucketPage, 'Choice 1 of 2');
-      assert.equal(await bucketPage.getByLabel('Journey model pair').inputValue(), 'sasrec-letter');
-      assert.equal(await bucketPage.getByLabel('Starting story').inputValue(), manifest.pairs[0].seeds[0].id);
-      assert.equal(await bucketPage.getByRole('button', {name:'Details', exact:true}).getAttribute('aria-pressed'), 'false');
-      await bucketPage.locator('.bucket-link').first().click();
-      await bucketPage.getByRole('heading', {name:"What's in this code", exact:true}).waitFor();
-      const counts = await bucketPage.locator('.bucket-breakdown li strong').allTextContents();
-      assert.equal(counts.length, 6);
-      assert.equal(counts.reduce((sum, text) => sum + Number(text.replace(/\D/g, '')), 0), 1643);
-      await bucketPage.getByLabel('Journey model pair').selectOption('sasrec-rpg');
-      await at(bucketPage, 'Choice 1 of 2');
-      await bucketPage.locator('.bucket-link').first().click();
-      await bucketPage.locator('.journey-inspector').waitFor();
-      assert.equal(await bucketPage.locator('.bucket-breakdown').count(), 0);
-    } finally {await bucketPage.close();}
-  });
-  await check('kiosk loop plays and stops on input', async () => {
-    // The idle timer reads window.__kioskIdleMs when it (re)starts and keeps a preset value, so set it before load.
-    const kioskPage = await openAt('#k=1', () => {window.__kioskIdleMs = 1000;});
-    try {
-      const caption = kioskPage.locator('.kiosk-caption');
-      await caption.waitFor({timeout:5000});
-      const first = await caption.textContent();
-      await kioskPage.waitForFunction(text => {const shown = document.querySelector('.kiosk-caption')?.textContent; return shown && shown !== text;}, first, {timeout:10000});
-      assert.notEqual(await caption.textContent(), first);
-      // A long idle spell after the input keeps the page with the visitor.
-      await kioskPage.evaluate(() => {window.__kioskIdleMs = 60000;});
-      await kioskPage.locator('body').dispatchEvent('pointerdown');
-      await caption.waitFor({state:'detached', timeout:2000});
-      await kioskPage.locator('.choose-product:not(:disabled), .guess-product:not(:disabled)').first().waitFor({timeout:5000});
-      await kioskPage.waitForTimeout(1500);
-      assert.equal(await caption.count(), 0);
-    } finally {await kioskPage.close();}
-  });
-  await check('every pair lists the same histories', async () => {
-    const ids = manifest.pairs[0].seeds.map(row => row.id);
-    assert.ok(ids.length >= 2);
-    assert.deepEqual(manifest.pairs[0].seeds.slice(0, 2).map(row => row.query_index), [145, 210]);
-    const listPage = await openHook({width:1440, height:1000});
-    try {
-      await listPage.getByRole('button', {name:'Just show me', exact:true}).click();
-      for (const pair of manifest.pairs) {
-        assert.equal(pair.seeds.length, ids.length, `${pair.id} has ${pair.seeds.length} histories, not ${ids.length}`);
-        assert.deepEqual(pair.seeds.map(row => row.id), ids, `${pair.id} lists other histories`);
-        await listPage.getByLabel('Journey model pair').selectOption(pair.id);
-        await at(listPage, 'Choice 1 of 2');
-        assert.equal(await listPage.getByLabel('Journey model pair').inputValue(), pair.id);
-        assert.equal(await listPage.getByLabel('Starting story').locator('option').count(), ids.length, `${pair.id} history menu`);
-      }
-    } finally {await listPage.close();}
   });
   await check('catalog covers every shown item', async () => {
     // A missing catalog entry shows as `Item <index>`; product names, full names, strip captions and titles are checked.
-    const names = target => target.evaluate(() => [
-      ...[...document.querySelectorAll('article[data-item] h3, article[data-item] .full-name p:first-of-type, .journey-timeline li[data-item] p, figcaption')].map(element => element.textContent),
+    const names = () => page.evaluate(() => [
+      ...[...document.querySelectorAll('article[data-item] h3, article[data-item] .full-name p:first-of-type, .journey-timeline li[data-item] p')].map(element => element.textContent),
       ...[...document.querySelectorAll('.journey-timeline li[data-item]')].map(element => element.title)]);
-    const coverPage = await openHook({width:1440, height:1000});
-    try {
-      await coverPage.getByRole('button', {name:'Just show me', exact:true}).click();
-      for (const pair of manifest.pairs) {
-        await coverPage.getByLabel('Journey model pair').selectOption(pair.id);
-        for (const seed of pair.seeds) {
-          await coverPage.getByLabel('Starting story').selectOption(seed.id);
-          await at(coverPage, 'Choice 1 of 2');
-          const shown = await names(coverPage);
-          assert.ok(shown.length >= 30);
-          assert.deepEqual(shown.filter(text => text.startsWith('Item ')), [], `${pair.id} ${seed.id}`);
-        }
+    for (const row of manifest.pairs) {
+      await pick(row);
+      for (const entry of row.seeds) {
+        await page.getByLabel('Starting story').selectOption(entry.id);
+        await at(page, 'Choice 1 of 2');
+        const shown = await names();
+        assert.ok(shown.length >= 30);
+        assert.deepEqual(shown.filter(text => text.startsWith('Item ')), [], `${row.id} ${entry.id}`);
       }
-    } finally {await coverPage.close();}
+    }
   });
-  await check('no API call, external request, failed response or console error', async () => {
+  await check('kiosk captions play scenes 1-3 and stop on input', async () => {
+    // The idle timer reads window.__kioskIdleMs when it (re)starts and keeps a preset value, so set it before load.
+    const kiosk = await openAt('#k=1', {init:() => {window.__kioskIdleMs = 1000;}});
+    try {
+      const caption = kiosk.locator('.kiosk-caption');
+      // The caption shows a frame before its scene change, so both are awaited together.
+      const shown = (text, n) => kiosk.waitForFunction(([start, scene]) => document.querySelector('.kiosk-caption')?.textContent.startsWith(start)
+        && document.querySelector('.tour')?.dataset.scene === scene, [text, String(n)], {timeout:10000});
+      await shown('A real shopper bought these products.', 1);
+      await shown(`They bought the ${short(target)}.`, 1);
+      await kiosk.locator(`.tour-pick.is-target[data-item="${target}"]`).waitFor();
+      await shown('Two recommenders, one history.', 2);
+      await shown('One code, 1,643 products.', 3);
+      await kiosk.waitForFunction(() => document.querySelector('.s3-card')?.dataset.item === '695', null, {timeout:10000});
+      // A long idle spell after the input keeps the page with the visitor.
+      await kiosk.evaluate(() => {window.__kioskIdleMs = 60000;});
+      await kiosk.locator('body').dispatchEvent('pointerdown');
+      await caption.waitFor({state:'detached', timeout:2000});
+      const at3 = await kiosk.locator('.tour').getAttribute('data-scene');
+      await kiosk.waitForTimeout(1500);
+      assert.equal(await caption.count(), 0);
+      assert.equal(await kiosk.locator('.tour').getAttribute('data-scene'), at3);
+    } finally {await kiosk.close();}
+  });
+  await check('no horizontal overflow on scenes 1-5 at 1440, 1024 and 390', async () => {
+    for (const [width, height] of [[1440,1000],[1024,768],[390,844]]) {
+      const view = await openAt('#v=tour&sc=1', {viewport:{width, height}});
+      try {
+        await view.locator('.tour-pick').first().waitFor();
+        if (width === 390) {
+          await settle(view);
+          await view.screenshot({path:figure('journeys-mobile.png'), fullPage:true, animations:'disabled'});
+          await view.screenshot({path:figure('journeys-mobile-viewport.png'), fullPage:false, animations:'disabled'});
+        }
+        assert.ok(await fits(view), `${width} scene 1`);
+        await view.getByRole('button', {name:'Just show me', exact:true}).click();
+        assert.ok(await fits(view), `${width} scene 1 revealed`);
+        for (const n of [2, 3, 4, 5]) {
+          await view.getByRole('button', {name:'Next', exact:true}).click();
+          await scene(view, n);
+          if (n === 3) {await view.getByRole('radio', {name:'Most popular'}).check(); await view.locator('.s3-scores').waitFor();}
+          if (n === 5) {await view.locator('.recall-chart svg').waitFor(); await view.locator('.s5-qr svg').waitFor();}
+          assert.ok(await fits(view), `${width} scene ${n}`);
+        }
+      } finally {await view.close();}
+    }
+  });
+  await check('no API call, other-host request, failed response or console error', async () => {
     assert.deepEqual(errors, []);
     assert.deepEqual(failed, []);
     assert.ok(requests.every(request => !request.includes('/api/')));
@@ -504,7 +526,8 @@ try {
   });
   // Receipt in the web-validation.json shape; hashes tie it to the reviewed sources and assets.
   const web = path.join(demo, 'web');
-  const hashed = [...['src/Journeys.jsx','src/journeyParts.jsx','src/journeyExtras.jsx','src/journeys.css','src/main.jsx','index.html','dist/index.html',
+  const tour = (await readdir(path.join(web, 'src/tour'))).filter(name => /\.(jsx|css)$/.test(name)).sort().map(name => `src/tour/${name}`);
+  const hashed = [...['src/Journeys.jsx','src/journeyParts.jsx','src/journeyExtras.jsx','src/journeys.css',...tour,'src/main.jsx','index.html','dist/index.html',
     ...(await readdir(path.join(web,'dist/assets'))).map(name=>`dist/assets/${name}`),
     'public/journeys/manifest.json','dist/journeys/manifest.json','public/journeys/media.json'].map(name=>path.join(web,name)),
     ...['journeys-desktop.png','journeys-desktop-bert-mlm.png','journeys-mobile.png','journeys-mobile-viewport.png'].map(figure)];
@@ -520,8 +543,8 @@ try {
     firstRenderMs,choiceMs,checks,consoleErrors:errors,
     externalRequests:requests.filter(request=>new URL(request).origin!==new URL(url).origin),
     failedResponses:failed,
-    pairs:manifest.pairs.map(pair=>pair.id),files,
-    scope:'Scripted browser checks of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study.'},null,2)+'\n');
+    pairs:manifest.pairs.map(row=>row.id),files,
+    scope:'Scripted browser checks of the five-scene tour and the explore screen of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study.'},null,2)+'\n');
   console.log(JSON.stringify({passed:checks.length,firstRenderMs,choiceMs,receipt}));
 } catch (error) {
   await page.screenshot({path:path.join(output,'failure.png'),fullPage:true});

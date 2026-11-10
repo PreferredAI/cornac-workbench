@@ -1,0 +1,99 @@
+/* Scenes 3-5 of the tour. The H1, .tour-body and .tour-takeaway come from tour.css. */
+.s3,.s4 {display:flex; flex-direction:column; gap:14px; min-width:0; margin-top:14px;}
+.s3 > .tour-takeaway {margin-top:6px;}
+.s3-code,.s4-code-pill {align-self:flex-start; display:inline-block; max-width:100%; padding:6px 14px; border-radius:18px; background:#f3edf8; color:#73538e; font-size:18px; font-weight:650; letter-spacing:.2px;}
+
+/* Scene 3: one code, many products */
+.s3-block {display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px 40px; align-items:start; background:#fff; border:1px solid var(--border); border-radius:12px; padding:22px 24px;}
+.s3-block.is-single {grid-template-columns:minmax(0,560px); background:none; border:0; padding:0;}
+.s3-block .bucket-breakdown {max-width:none; margin:0;}
+.s3-block .bucket-breakdown h3 {font-size:14px;}
+.s3-block .bucket-breakdown li {font-size:13px; grid-template-columns:minmax(110px,160px) minmax(0,1fr) 48px;}
+.s3-block .breakdown-track {height:14px;}
+.s3-picker {display:flex; flex-direction:column; gap:14px; min-width:0;}
+.s3-segmented {display:inline-grid; grid-template-columns:1fr 1fr; align-self:flex-start; max-width:100%; padding:3px; border-radius:10px; background:#eef3f5; border:1px solid var(--border);}
+.s3-segmented label {position:relative; display:flex; align-items:center; justify-content:center; min-height:38px; padding:6px 16px; border-radius:8px; font-size:14px; font-weight:600; color:var(--muted); text-align:center; cursor:pointer; transition:background .15s,color .15s,box-shadow .15s;}
+.s3-segmented label.is-on {background:#fff; color:var(--accent-dark); box-shadow:0 1px 3px #17324d24;}
+.s3-segmented input {position:absolute; opacity:0; inset:0; margin:0; cursor:pointer;}
+.s3-segmented label:has(input:focus-visible) {outline:2px solid #078d87; outline-offset:2px;}
+.s3-stage {overflow:hidden; border-radius:12px;}
+.s3-card {display:grid; grid-template-columns:200px minmax(0,1fr); gap:18px; align-items:center; padding:12px; border:1px solid #dce5eb; border-radius:12px; background:#fff;}
+.s3-card .thumb {width:200px; height:200px; border-radius:10px;}
+.s3-card.s3-target {border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent);}
+.s3-card-info {display:flex; flex-direction:column; align-items:flex-start; gap:8px; min-width:0;}
+.s3-card h2 {font-size:20px; line-height:1.25; font-weight:650;}
+.s3-card p {font-size:14px; color:var(--muted);}
+.s3-card .target-pill {font-size:12px; padding:3px 10px;}
+.s3-from-right {animation:s3-in-right .32s ease-out;}
+.s3-from-left {animation:s3-in-left .32s ease-out;}
+.s3-scores {display:flex; flex-direction:column; gap:10px; animation:s-rise .3s ease-out;}
+.s3-scores > p {display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px; color:var(--muted);}
+.s3-scores dl {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0;}
+.s3-scores dl > div {display:flex; flex-direction:column; justify-content:space-between; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px;}
+.s3-scores dt {display:flex; align-items:baseline; gap:8px; font-size:13px; color:var(--muted);}
+.s3-scores dt small {font-size:11px; font-weight:650; color:#785399;}
+.s3-scores dd {margin:2px 0 0; font-size:32px; font-weight:650; letter-spacing:-.6px; line-height:1.2; color:var(--ink); font-variant-numeric:tabular-nums;}
+
+/* Scene 4: you steer */
+.s4-history {display:flex; align-items:center; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px 18px;}
+.s4-bar {display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap;}
+.s4-bar > p {flex:1 1 320px; min-width:0;}
+.s4-bar > p:focus {outline:none;}
+.s4-bar > p:empty {flex-basis:0;}
+.s4-bar:not(:has(> button)):has(> p:empty) {margin-bottom:-14px;}
+.s4-history .journey-strip {min-width:0;}
+.s4-chip {min-height:36px; padding:7px 14px; border-radius:99px; border:1px solid #d4c1e6; background:#f6f1fa; color:#73538e; font-size:13px; font-weight:600; text-align:left;}
+.s4-chip:hover {background:#efe5f7; border-color:#bfa3d9;}
+.s4-change {font-size:17px; font-weight:650; line-height:1.4;}
+.s4-bar > .tour-takeaway {margin-top:0;}
+.s4 .same-sid-step {margin-bottom:0;}
+.s4-shelves {background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 20px;}
+.s4-shelves.is-busy {opacity:.7;}
+.s4-code {display:flex; flex-direction:column; gap:10px; background:#fff; border:1px solid #e2d5f0; border-radius:12px; padding:18px 20px;}
+.s4-code-title {display:flex; align-items:center; justify-content:space-between; gap:12px;}
+.s4-code-pill {font-size:15px;}
+
+/* Scene 5: made with Cornac */
+.s5-grid {margin-top:22px; display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:20px 28px; align-items:start;}
+.s5-listing {margin:0; padding:16px 18px; background:#0f2233; color:#dbe8f3; border-radius:12px; overflow-x:auto; font-size:12.5px; line-height:1.55;}
+.s5-listing code {font-size:inherit; white-space:pre;}
+.s5-grid .recall-chart {margin:0; background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; min-width:0;}
+.s5-chart-wait {min-height:320px; background:#fff; border:1px solid var(--border); border-radius:12px;}
+.s5-end {margin-top:20px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px 28px; align-items:center; background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 24px;}
+.s5-points {display:flex; flex-direction:column; gap:8px; margin:0; padding:0 0 0 18px; font-size:15px; line-height:1.4;}
+.s5-points li::marker {color:var(--accent);}
+.s5-get {display:flex; flex-wrap:wrap; align-items:center; gap:12px 16px; min-width:0;}
+.s5-pip {display:block; padding:10px 14px; background:#0f2233; color:#e8f1fa; border-radius:8px; font-size:15px;}
+.s5-buttons {display:flex; flex-wrap:wrap; gap:8px;}
+.s5-buttons .button {min-height:40px; font-size:13px; padding:8px 14px;}
+.s5-qr {grid-column:2; grid-row:1 / span 2; margin:0; display:flex; flex-direction:column; align-items:center; gap:6px;}
+.s5-qr > div {width:132px; height:132px;}
+.s5-qr svg {display:block; width:100%; height:100%;}
+.s5-qr figcaption {font-size:12px; color:var(--muted);}
+
+@keyframes s-rise {from {transform:translateY(6px); opacity:0;} to {transform:none; opacity:1;}}
+@keyframes s3-in-right {from {transform:translateX(48px); opacity:0;} to {transform:none; opacity:1;}}
+@keyframes s3-in-left {from {transform:translateX(-48px); opacity:0;} to {transform:none; opacity:1;}}
+@media (prefers-reduced-motion:reduce) {.s3-from-right,.s3-from-left,.s3-scores {animation:none;} .s3-segmented label {transition:none;}}
+
+@media (max-width:900px) {
+  .s3-block {grid-template-columns:minmax(0,1fr);}
+  .s5-grid {grid-template-columns:minmax(0,1fr);}
+}
+@media (max-width:640px) {
+  .s4-change {font-size:15px;}
+  .s3-code,.s4-code-pill {font-size:15px;}
+  .s3-block,.s4-shelves,.s4-code,.s5-end {padding:14px;}
+  .s3-block .bucket-breakdown li {grid-template-columns:minmax(80px,120px) minmax(0,1fr) 40px; font-size:12px;}
+  .s3-segmented {align-self:stretch;}
+  .s3-segmented label {padding:6px 8px; font-size:13px;}
+  .s3-card {grid-template-columns:minmax(0,1fr); justify-items:center; text-align:center;}
+  .s3-card-info {align-items:center;}
+  .s3-scores dl {gap:8px;}
+  .s3-scores dl > div {padding:10px;}
+  .s3-scores dd {font-size:24px;}
+  .s4-history {padding:12px;}
+  .s5-listing {font-size:11px; padding:12px;}
+  .s5-end {grid-template-columns:minmax(0,1fr);}
+  .s5-qr {grid-column:auto; grid-row:auto; justify-self:center;}
+}

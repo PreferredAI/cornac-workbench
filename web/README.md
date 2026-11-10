@@ -1,28 +1,36 @@
 # Cornac Workbench
 
 The default route is the static **Beauty Recommendation Journeys** screen. It
-shows one of six real Amazon Beauty purchase histories with product photos and
-asks what the shopper bought next; after a guess, or `Just show me`, the real
-next purchase is marked wherever a recommendation list contains it. The visitor
-then makes up to two choices while a sequential and a Semantic-ID model
-recommend side by side: eight model pairs (SASRec or BERT4Rec (MLM), each with
-LETTER, RPG, DiffGRM or TIGER; 9,627 prepared states), four resolver strategies,
-bucket inspection with the product categories inside a code, a count of the new
-products in each list after every choice, the same-SID example "Two products,
-one code." on the LETTER pairs, a summary after the second choice, and
-save/replay. `Details` shows the technical labels, a Recall@5 chart of all eight
-pairs and the fixed full-cohort Cornac 3.1 metrics. The journey is kept in the
-URL hash; `Share` shows the link as a QR code (the `qrcode` package, loaded only
-when the panel opens), and `#k=1` turns on kiosk mode, which plays a captioned
-loop after 60 s without input. Photos and short names are read from
-`public/journeys/media.json` and `public/journeys/thumbs/` (2,407 WebP files, at
-most 320 px on a side), written by [prepare_media.py](../prepare_media.py); if
-`media.json` is missing, the page skips the guess and shows placeholders. See
-[journey preparation](../journeys.md). Serve `dist` with any static host for
-this experience; it does not call the Python API. `npm run test:journeys` runs
-28 browser checks against a plain static server on port 8110 and writes [the
-results](../journeys-validation.json) and `../figures/journeys-*.png`; `node
-scripts/capture-figure.mjs` captures the paper figure.
+opens on a five-step tour (`src/tour/`) with SASRec and LETTER on one real
+Amazon Beauty purchase history: (1) the shopper's purchases as photos and
+"What did they buy next? Pick one." among four products, after which the real
+next purchase is marked; (2) both models' top five side by side, SASRec
+ranking products directly and LETTER predicting a code first; (3) LETTER's
+first code, the 1,643 products that share it by category, a switch between the
+most popular product and the one closest to the history, and LETTER's
+Recall@5 by right code, right product and collision-corrected; (4) up to two
+choices, with a sentence on how each list changed and the same-code example
+"Try two products that share a code"; (5) the Cornac experiment in Python, a
+Recall@5 chart of all eight pairs, `pip install cornac` and a QR code for the
+repository. `Explore freely` (or `Skip tour`) opens the full screen: eight
+model pairs (SASRec or BERT4Rec (MLM), each with LETTER, RPG, DiffGRM or TIGER;
+9,627 prepared states), six starting histories, four resolver strategies,
+bucket inspection with the product categories inside a code, save/replay, and
+`Details` with the technical labels, the Recall@5 chart and the fixed
+full-cohort Cornac 3.1 metrics. The hash keeps the mode and step
+(`v=tour&sc=N` or `v=explore`) and the journey; `Share` shows the link as a QR
+code (the `qrcode` package, loaded only when needed), and `#k=1` turns on kiosk
+mode, which plays tour steps 1-3 with captions after 60 s without input. Photos
+and short names are read from `public/journeys/media.json` and
+`public/journeys/thumbs/` (2,407 WebP files, at most 320 px on a side), written
+by [prepare_media.py](../prepare_media.py); if `media.json` is missing, the
+page skips the guess and shows placeholders. See [journey
+preparation](../journeys.md). Serve `dist` with any static host for this
+experience; it does not call the Python API. `npm run test:journeys` runs
+29 browser checks against a plain static server on port 8110 and
+writes [the results](../journeys-validation.json) and
+`../figures/journeys-*.png`; `node scripts/capture-figure.mjs` captures the
+paper figures.
 
 The diagnostic interface described below is retained at `?view=diagnostics`
 and uses the local Python API.

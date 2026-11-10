@@ -41,7 +41,7 @@ export function SharePanel({url, onClose}) {
 }
 
 // Categorical slots 1-3 of the dataviz reference palette, validated on white; every bar also carries its value.
-const series = {item: ['Item', '#2a78d6'], sid: ['SID', '#eb6834'], cce: ['CCE', '#1baf7a']};
+const series = {item: ['Item', '#2a78d6', 'Right product'], sid: ['SID', '#eb6834', 'Right code'], cce: ['CCE', '#1baf7a', 'Collision-corrected']};
 const BAR = 12, GAP = 2, GROUP = 14, LABEL = 112, VALUE = 46, AXIS = 22;
 function barPath(x, y, w, h) {
   const r = Math.min(4, w, h / 2);
@@ -57,7 +57,7 @@ function chartRows(pairs, data, strategy) {
   return [...models].map(([name, bars]) => ({name, bars}));
 }
 
-export function RecallChart({pairs, data, strategy, policy, current}) {
+export function RecallChart({pairs, data, strategy, policy, current, showDetails = true}) {
   const box = useRef(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -75,7 +75,7 @@ export function RecallChart({pairs, data, strategy, policy, current}) {
   const ticks = Array.from({length: Math.round(max / 0.05) + 1}, (_, i) => i * 0.05);
   const summary = rows.map(row => `${row.name}: ${row.bars.map(([key, value]) => `${series[key][0]} ${value.toFixed(3)}`).join(', ')}`).join('. ');
   return <figure className="recall-chart">
-    <ul className="chart-legend">{Object.values(series).map(([label, color]) => <li key={label}><i style={{background: color}}/>{label}</li>)}<li className="chart-policy">SID models: {policy}</li></ul>
+    <ul className="chart-legend">{Object.values(series).map(([label, color, plain]) => <li key={label}><i style={{background: color}}/>{showDetails ? label : plain}</li>)}<li className="chart-policy">{showDetails ? 'SID models' : 'Code models'}: {policy}</li></ul>
     <div ref={box}>{width ? <svg width={width} height={bottom + AXIS} viewBox={`0 0 ${width} ${bottom + AXIS}`} role="img" aria-label={`Recall@5 by model. ${summary}.`}>
       <title>Recall@5 by model</title>
       {ticks.map(tick => <g key={tick}><line className={tick ? 'chart-grid' : 'chart-axis'} x1={x(tick)} x2={x(tick)} y1={0} y2={bottom}/>

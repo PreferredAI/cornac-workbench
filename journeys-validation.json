@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-08T19:00:51.668Z",
+  "date": "2026-11-09T17:16:18.545Z",
   "url": "http://127.0.0.1:8110",
   "browser": "156.0.8078.4",
   "browserPath": "Playwright Chromium; Browser plugin not available",
@@ -15,111 +15,107 @@
     "cores": 384,
     "node": "v24.15.0"
   },
-  "firstRenderMs": 136.971766,
-  "choiceMs": 68.3075980000001,
+  "firstRenderMs": 142.859873,
+  "choiceMs": 54.277655000000095,
   "checks": [
     {
-      "name": "page loads with the question and two shelves of five",
+      "name": "scene 1 shows the 16 purchases with photos",
       "status": "passed"
     },
     {
-      "name": "product photos load",
+      "name": "four guess cards with distinct names",
       "status": "passed"
     },
     {
-      "name": "reveal marks the real purchase and keeps both lists",
+      "name": "a wrong guess shows both badges and the takeaway",
       "status": "passed"
     },
     {
-      "name": "Details shows the evaluation table",
+      "name": "Just show me reveals without a guess",
       "status": "passed"
     },
     {
-      "name": "shelves sit side by side with aligned rows",
+      "name": "stepper: five steps, Next and Back",
       "status": "passed"
     },
     {
-      "name": "four item strategies change the right shelf, not the history",
+      "name": "arrow keys and step dots move between scenes",
       "status": "passed"
     },
     {
-      "name": "bucket inspector lists other products and scores",
+      "name": "scene 2: two lists of five, the real purchase on the code side",
       "status": "passed"
     },
     {
-      "name": "a choice updates both shelves and keeps the evaluation table",
+      "name": "scene 3: one code, 1,643 products in six categories",
       "status": "passed"
     },
     {
-      "name": "change line matches a recount of both shelves",
+      "name": "scene 3: the picking rule swaps 695 and 2739",
       "status": "passed"
     },
     {
-      "name": "second choice ends the journey and Undo goes back",
+      "name": "scene 3 on RPG: one code, one product",
       "status": "passed"
     },
     {
-      "name": "recap shows what happened and its actions work",
+      "name": "scene 4: a choice loads the stored next state",
       "status": "passed"
     },
     {
-      "name": "save and replay restore the journey and reject a tampered file",
+      "name": "scene 4: the change line matches a recount",
       "status": "passed"
     },
     {
-      "name": "changing the story restarts and keyboard choice works",
+      "name": "scene 4: Undo goes back to the start",
       "status": "passed"
     },
     {
-      "name": "changing the story cancels a choice in flight",
+      "name": "scene 4: two products that share a code",
       "status": "passed"
     },
     {
-      "name": "a guess is marked and the real purchase revealed",
+      "name": "scene 4: second choice gives the recap and ten final suggestions",
       "status": "passed"
     },
     {
-      "name": "same-code step: either product, different left shelf",
+      "name": "scene 5: the paper listing and the eight-pair chart",
       "status": "passed"
     },
     {
-      "name": "each model pair restarts with its own evaluation table",
+      "name": "scene 5: QR code and Share this journey",
       "status": "passed"
     },
     {
-      "name": "RPG pair shows one product per code and no strategy menu",
+      "name": "Explore freely, then Start over",
       "status": "passed"
     },
     {
-      "name": "BERT4Rec and TIGER journey saves and replays",
+      "name": "Skip tour opens explore; Back to the tour returns",
       "status": "passed"
     },
     {
-      "name": "no horizontal overflow; first view fits desktop and phone",
+      "name": "hash v=tour&sc=N round trip",
       "status": "passed"
     },
     {
-      "name": "hash restores a journey",
+      "name": "explore: eight pairs load with the policy menu",
       "status": "passed"
     },
     {
-      "name": "share panel shows a QR of the link",
+      "name": "explore: bucket Inspector",
       "status": "passed"
     },
     {
-      "name": "details chart covers all eight pairs",
+      "name": "explore: Save and Replay; a tampered file is rejected",
       "status": "passed"
     },
     {
-      "name": "bucket view shows categories",
+      "name": "explore: Details shows the chart and the table",
       "status": "passed"
     },
     {
-      "name": "kiosk loop plays and stops on input",
-      "status": "passed"
-    },
-    {
-      "name": "every pair lists the same histories",
+      "name": "every pair lists the same six histories",
       "status": "passed"
     },
     {
@@ -127,7 +123,15 @@
       "status": "passed"
     },
     {
-      "name": "no API call, external request, failed response or console error",
+      "name": "kiosk captions play scenes 1-3 and stop on input",
+      "status": "passed"
+    },
+    {
+      "name": "no horizontal overflow on scenes 1-5 at 1440, 1024 and 390",
+      "status": "passed"
+    },
+    {
+      "name": "no API call, other-host request, failed response or console error",
       "status": "passed"
     }
   ],
@@ -146,48 +150,80 @@
   ],
   "files": {
     "web/src/Journeys.jsx": {
-      "bytes": 24585,
-      "sha256": "142951ed952b7f728620af0d9fa9d76e282ef5e89f63bb370584e9a0c1f26917"
+      "bytes": 26266,
+      "sha256": "bafb2a6c3f4f3e28dd8e8e434f908236dfa08ebeb24ae4b77ec4fa0ae7e9ed9f"
     },
     "web/src/journeyParts.jsx": {
       "bytes": 9386,
       "sha256": "3fda2d61007761cc0492a7d154fdcc7f654035a05a71a5ba62304a3eb628b4ec"
     },
     "web/src/journeyExtras.jsx": {
-      "bytes": 6811,
-      "sha256": "6bf7066cb4c9650161a8bbb806cb412451362a0dc1fce526abf1b5a1a722e159"
+      "bytes": 6948,
+      "sha256": "70204bbf76707325fd3102c72d445d064f9a4e28537c2b071cc1f3d4fad7b056"
     },
     "web/src/journeys.css": {
       "bytes": 15707,
       "sha256": "518c7bc13df13623fc6acd7e607a3e1f04d41a947ce0f792ec6a98e13c10c995"
+    },
+    "web/src/tour/Scene1.jsx": {
+      "bytes": 3739,
+      "sha256": "75337ccfb76cc64015bf5170c1fc6518a8ca883a68b3754c9e466ad8138731f0"
+    },
+    "web/src/tour/Scene2.jsx": {
+      "bytes": 3182,
+      "sha256": "4103cf39d7c93907dcf8d76957ea84043df1bf809f292fe1d429ed988089aa2c"
+    },
+    "web/src/tour/Scene3.jsx": {
+      "bytes": 4082,
+      "sha256": "069a00fc998ccd7cefef02651d06164bc2d2f6d141ed58d61e832ab25d58a6e6"
+    },
+    "web/src/tour/Scene4.jsx": {
+      "bytes": 7183,
+      "sha256": "6c2c6af3467322505a199560cc87a3182fba5a8ec00f907148d8880d2ba044d8"
+    },
+    "web/src/tour/Scene5.jsx": {
+      "bytes": 4207,
+      "sha256": "9ea6591a07e3085d98d720a4af3d2a11da5f4e0024626ae4355bef828b18ac08"
+    },
+    "web/src/tour/Tour.jsx": {
+      "bytes": 2505,
+      "sha256": "c85eb5853a6af933f2e8d18e9df907e43c0833159c9d3e82f1ed5df3210a26ba"
+    },
+    "web/src/tour/scenes.css": {
+      "bytes": 7662,
+      "sha256": "37a83dfea612aeb256522f5476fa0f09734d07d0cecd72462a8fabbdabc4b423"
+    },
+    "web/src/tour/tour.css": {
+      "bytes": 7714,
+      "sha256": "59d8327ea529fbc87465ad4ab5696fcd93d813b8111b30567791647bd4aa35b3"
     },
     "web/src/main.jsx": {
       "bytes": 491,
       "sha256": "b2948c39012c882b50138dc01e47b793157ce44ec7091c8be78491525eea8047"
     },
     "web/index.html": {
-      "bytes": 1181,
-      "sha256": "0214cb69fd851c26c33f9f3b65954f1fb6aeb095ee5dd355f36250513bf6953b"
+      "bytes": 1183,
+      "sha256": "23aa7f5ba862978f9872d8f4e7f034d061158377f560bf83d6b087a9866767b9"
     },
     "web/dist/index.html": {
-      "bytes": 1280,
-      "sha256": "66ed7fd0ce29cc9496431a146306efc83b01daa56f5a3932f4f88daa1d36f762"
+      "bytes": 1282,
+      "sha256": "f751ad706c489e99ea257729154e2a149d894f8312cdda45c974dd416389a5f1"
     },
-    "web/dist/assets/App-B-BSco7U.js": {
+    "web/dist/assets/App-DAKD8PpE.js": {
       "bytes": 31387,
-      "sha256": "97ab8326a074b25c4e6d8c996e79d4a801420ffab4bb912f1a6e74a4cc304b93"
+      "sha256": "421e9529f7d2640385bcaaafbb2a9638bde921b1a62e7e52197e0c092d308509"
     },
-    "web/dist/assets/browser-CGvdcbLq.js": {
+    "web/dist/assets/browser-DxxtZpf2.js": {
       "bytes": 25776,
-      "sha256": "163cfaad206eb03d3be26dfd16c7a9eef2f66f632036f5a57d5f4798eafb48da"
+      "sha256": "b814bd8ba28d4ca3c6d8408dd73310052a427b337316e6e1f382ca0fd08c1bf8"
     },
-    "web/dist/assets/index-CeYJzhyO.css": {
-      "bytes": 37183,
-      "sha256": "093193ffc4d2657e468ab34d4c0ddf9e6897734604c262b5c4b38128f0150380"
+    "web/dist/assets/index-CiW85jZl.js": {
+      "bytes": 277573,
+      "sha256": "9b671b7cff6a1970b01a9d4218b548b405acbf4fbe0772efe4aec1cb545449ef"
     },
-    "web/dist/assets/index-DWMD4yPu.js": {
-      "bytes": 258009,
-      "sha256": "886f727e0d068740cd63e16f75e78acb74129d520dab4e561711739dddd8d5f6"
+    "web/dist/assets/index-GhP8jNzb.css": {
+      "bytes": 51028,
+      "sha256": "483a07a6545f649da439b9ed0a82677cc0063f1886d760b09be3b0a874ea3c72"
     },
     "web/public/journeys/manifest.json": {
       "bytes": 23637,
@@ -202,21 +238,21 @@
       "sha256": "64243ba4479ea92b51df74efee2b0216f4a0b81d2280b5498aab6a5b9b3aadbe"
     },
     "figures/journeys-desktop.png": {
-      "bytes": 263129,
-      "sha256": "24c9e346fdd043618f9189a9c3dcfed1343925b39aa7f0b969b7c9a76c8538ad"
+      "bytes": 138629,
+      "sha256": "b7c2e593277a32fc6fb9df6c48ead5323e8656424ce59a672a1626519b5a2c6d"
     },
     "figures/journeys-desktop-bert-mlm.png": {
-      "bytes": 266380,
-      "sha256": "107bc02fcdd6800198427035d9817e2234de08a5ff2d9c22acefd8b9d0acb9b7"
+      "bytes": 141564,
+      "sha256": "ca897dae56c01335847965ccce87acdad51e1c5d8e5dfa162339d271d9119ab8"
     },
     "figures/journeys-mobile.png": {
-      "bytes": 110504,
-      "sha256": "6ce02ef7e67506c040279fc7547eb0632fbf940e4aa96940cf136bd85a75f830"
+      "bytes": 123993,
+      "sha256": "375560b90d2923d7c7655aeb2fe495ea07e5ca0977025fd36848124880c823eb"
     },
     "figures/journeys-mobile-viewport.png": {
-      "bytes": 72601,
-      "sha256": "0490f0600eecb5824d6f5b8c0737bf274bdc300e1a3b221909accc8c86a1b49b"
+      "bytes": 95608,
+      "sha256": "f756f3d0573238b971a7a005de340c8993dd2e435260a09cdebcdf7e048c8480"
     }
   },
-  "scope": "Scripted browser checks of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
+  "scope": "Scripted browser checks of the five-scene tour and the explore screen of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
 }

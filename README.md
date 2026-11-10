@@ -12,7 +12,7 @@
 [![Deploy](https://github.com/PreferredAI/cornac-workbench/actions/workflows/deploy.yml/badge.svg)](https://github.com/PreferredAI/cornac-workbench/actions/workflows/deploy.yml)
 ![GitHub License](https://img.shields.io/github/license/PreferredAI/cornac-workbench?color=yellow)
 
-![The workbench on an Amazon Beauty purchase history](figures/journeys-paper-desktop.png)
+![The workbench on an Amazon Beauty purchase history](figures/journeys-paper-scene2.png)
 <p align="center"><i>SASRec (left) and LETTER (right) on the same 16-item Amazon Beauty history, after the shopper's real next purchase has been revealed: LETTER lists it first, SASRec does not list it</i></p>
 
 
@@ -20,24 +20,29 @@
 
 A Semantic-ID model gives each item a short sequence of discrete codes, its SID, and recommends by generating the SID of the next item. Several items can share one SID, so a generated SID does not say which product to show. In the Amazon Beauty data used here, the first SID that LETTER generates for the default history is shared by 1,643 products.
 
-The workbench makes this visible on real purchase histories:
+The workbench makes this visible on real purchase histories. It opens on a five-step tour with SASRec and LETTER on the default history; *Next* and *Back*, or the step names at the top, move between steps, and *Skip tour* goes straight to free exploration.
 
-1. **Guess the next purchase.** The page shows a shopper's history with product photos and two lists of five recommendations, one from a sequential model and one from a Semantic-ID model. You tap the product you think the shopper bought next, or *Just show me*. The real next purchase, held out from the Amazon Beauty test set, is then marked wherever a list contains it, and one line says which model ranked it where. For the default history, LETTER lists it first and SASRec does not list it.
-2. **Choose a product.** Choosing a product from either list adds it to the history, and both models recommend again. A line counts the new products in each list, and *Why?* explains the difference. A journey allows up to two choices; *Undo* and *Restart* go back, and a summary follows the second choice.
-3. **Two products, one SID.** With SASRec and LETTER on the default history, the page offers two products whose SID is shared by 1,643 products. Whichever you choose, LETTER generates the same SIDs as before, while SASRec replaces all five of its products.
-4. **Change the model pair or the history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The six starting histories are taken from the Amazon Beauty test set: two were chosen by hand, and four by a script so that the real next purchase is in the first list of LETTER only, of SASRec only, of both, or of neither.
+1. **The shopper.** The shopper's 16 purchases are shown as photos, with the question "What did they buy next? Pick one." and four product cards: the real next purchase, held out from the Amazon Beauty test set, and three other products from the two models' lists. After you pick one, or press *Just show me*, the page marks the real purchase (a fine-liner brush) and your guess.
+2. **Two recommenders, one history.** The two models' top five products, side by side. SASRec ranks all 12,068 products directly; LETTER predicts a short code, like a shelf label shared by similar products, then picks a product with that code. For the default history, LETTER lists the brush first and SASRec does not list it.
+3. **One code, 1,643 products.** LETTER's first code is shared by 1,643 products: 573 skin-care, 366 hair-care and 353 makeup products, among others. A switch shows which of them is recommended under two picking rules, the most popular product (a sunscreen) or the product closest to the history (the brush). The step ends with LETTER's Recall@5 on all 22,363 held-out test queries in three views: right code 0.196, right product 0.017, and collision-corrected 0.004.
+4. **You steer.** Choosing a product from either list adds it to the history, and both models recommend again; a sentence says what changed, for example "SASRec rewrote 4 of its 5 picks. LETTER kept the same 5 codes." *Try two products that share a code* offers two products with the same code: whichever you choose, LETTER generates the same codes as before, while SASRec replaces all five of its products. A journey allows up to two choices, and *Undo* goes back.
+5. **Made with Cornac.** The Cornac experiment behind the screen in a few lines of Python, a Recall@5 chart of all eight model pairs, `pip install cornac`, and a QR code for the Cornac repository. *Explore freely* opens the full screen, *Share this journey* shows the current journey as a QR code, and *Start over* returns to step 1.
 
-   | Sequential models | Semantic-ID models |
-   | :---------------: | :----------------: |
-   | SASRec, BERT4Rec  | LETTER, TIGER, RPG, DiffGRM |
+*Explore freely* (or *Skip tour*) opens the full screen, where everything can be changed:
 
-5. **Change how a SID becomes a product.** The Semantic-ID model's list depends on a policy:
-   - *One per SID*: one product for each generated SID, chosen either by training popularity or by cosine similarity to the history (Sentence-T5 embeddings).
-   - *Expand buckets*: all products of each SID in turn, ordered by the same two scores. A large bucket can fill the whole list.
+- **The model pair and the history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The six starting histories are taken from the Amazon Beauty test set: two were chosen by hand, and four by a script so that the real next purchase is in the first list of LETTER only, of SASRec only, of both, or of neither.
 
-   Each SID links to its *bucket*, the list of products that share it. For a large bucket the page also counts the products by category; the 1,643-product SID above, for example, holds 573 skin-care, 366 hair-care and 353 makeup products, among others. In the TIGER and RPG pairs every bucket shown holds a single product, so there is no policy menu.
-6. **Save and replay.** *Save journey* downloads the session as a JSON file. *Replay journey* loads it again and rejects a file whose choices or provenance do not match the precomputed states.
-7. **Share, or leave it running at a booth.** The address bar keeps the current journey, so reloading or sending the link reopens it. *Share* shows the link as a QR code. Kiosk mode is `#k=1` at the end of the address (for example <https://cornac-workbench.preferred.ai/#k=1>): after 60 seconds without input, the page plays a captioned walkthrough until someone touches the screen or presses a key.
+  | Sequential models | Semantic-ID models |
+  | :---------------: | :----------------: |
+  | SASRec, BERT4Rec  | LETTER, TIGER, RPG, DiffGRM |
+
+- **How a SID becomes a product.** The Semantic-ID model's list depends on a policy:
+  - *One per SID*: one product for each generated SID, chosen either by training popularity or by cosine similarity to the history (Sentence-T5 embeddings).
+  - *Expand buckets*: all products of each SID in turn, ordered by the same two scores. A large bucket can fill the whole list.
+
+  Each SID links to its *bucket*, the list of products that share it, with their categories for a large bucket. In the TIGER and RPG pairs every bucket shown holds a single product, so there is no policy menu.
+- **Save and replay.** *Save journey* downloads the session as a JSON file. *Replay journey* loads it again and rejects a file whose choices or provenance do not match the precomputed states.
+- **Share, or leave it running at a booth.** The address bar keeps the current journey, so reloading or sending the link reopens it. *Share* shows the link as a QR code. Kiosk mode is `#k=1` at the end of the address (for example <https://cornac-workbench.preferred.ai/#k=1>): after 60 seconds without input, the page plays the first three tour steps with captions until someone touches the screen or presses a key.
 
 The *Details* button shows the technical labels, a Recall@5 chart of all eight pairs, and, for each pair, Recall@5 and NDCG@5 on all 22,363 held-out test queries: item-level values for both models, and SID-level and collision-corrected (CCE) values for the Semantic-ID model.
 
@@ -108,7 +113,7 @@ This runs 17 journey tests and 11 diagnostic-view tests. The other tests need on
 Browser tests use [Playwright](https://playwright.dev/) with Chromium (`npx playwright install chromium` once). From `web/`:
 
 ```bash
-npm run test:journeys   # 28 checks; needs the static server on port 8110
+npm run test:journeys   # 29 checks; needs the static server on port 8110
 npm run test:browser    # 17 checks; needs serve_workbench.py on port 8080
 ```
 
@@ -117,10 +122,10 @@ They write their results to `journeys-validation.json` (and the screenshots in `
 
 ## Deployment
 
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds `web/` and deploys it to Cloudflare Pages on every push to `main` that changes `web/`. It follows the setup of the [Preferred.AI website](https://github.com/PreferredAI/PreferredAI.github.io). It needs:
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds `web/` and deploys it to Cloudflare on every push to `main` that changes `web/`, following the setup of the [Preferred.AI website](https://github.com/PreferredAI/PreferredAI.github.io). The site is served by a Cloudflare Worker that holds only the static files ([`web/wrangler.jsonc`](web/wrangler.jsonc)). It needs:
 
-- a Cloudflare Pages project named `cornac-workbench` with the custom domain `cornac-workbench.preferred.ai`;
-- the repository secrets `CLOUDFLARE_API_TOKEN` (with permission to edit Cloudflare Pages) and `CLOUDFLARE_ACCOUNT_ID`.
+- a Worker named `cornac-workbench` with the custom domain `cornac-workbench.preferred.ai`;
+- the repository secrets `CLOUDFLARE_API_TOKEN` (with the *Workers Scripts: Edit* permission) and `CLOUDFLARE_ACCOUNT_ID`.
 
 
 ## Reproducing the exported data

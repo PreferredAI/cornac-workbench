@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {ArrowLeft, Check, Download, QrCode, RotateCcw, ScanLine, Upload} from 'lucide-react';
 import {ChangeLine, DetailsToggle, HistoryStrip, ProductCard, Recap, SameCodeStep, addressesDiff, changeText, count, itemShort, itemTitle, plainLabels, revealText, shelfDiff, targetRank} from './journeyParts.jsx';
 import {BucketBreakdown, RecallChart, SharePanel, buildHash, readHash} from './journeyExtras.jsx';
+import Tour from './tour/Tour.jsx';
 import './journeys.css';
 
 const labels = {
@@ -78,6 +79,8 @@ export default function Journeys() {
   const [shareOpen, setShareOpen] = useState(false);
   const [kiosk, setKiosk] = useState(false);
   const [kioskStep, setKioskStep] = useState(-1);
+  const [mode, setMode] = useState('tour');
+  const [scene, setScene] = useState(1);
   const written = useRef('');
   const home = useRef(null);
   const requestVersion = useRef(0);
@@ -85,11 +88,12 @@ export default function Journeys() {
   const timeline = useRef(null);
   const heading = useRef(null);
   const pairSelect = useRef(null);
+  const toExplore = useRef(false);
   const pair = manifest?.pairs.find(row => row.id === pairId);
   const depth = Math.max(0, trail.length - 1);
   const terminal = Boolean(manifest && depth === manifest.max_choices);
   const target = media?.targets[seedId];
-  const revealed = revealedOnce || target == null;
+  const revealed = mode === 'explore' || revealedOnce || target == null;
   const phase = terminal ? 'recap' : revealed ? 'explore' : 'hook';
   const synced = Boolean(node) && resolved.get(statePath(pairId, trail[trail.length - 1])) === node;
   const nodes = synced ? trail.map(id => resolved.get(statePath(pairId, id))) : [];
@@ -102,6 +106,10 @@ export default function Journeys() {
   const probe = pair?.same_bucket_probe;
   const picked = synced && depth ? node.history[node.history.length - 1] : null;
   const probeStep = probe?.seed === seedId && phase === 'explore' && synced && (!depth || (depth === 1 && probe.items.includes(picked)));
+  // The tour reads the trail from the cache: choices load the next state before the trail grows.
+  const trailNodes = pairId ? trail.map(id => resolved.get(statePath(pairId, id))) : [];
+  const ready = trailNodes.length > 0 && trailNodes.every(Boolean);
+  const view = mode === 'tour' ? `v=tour&sc=${scene}` : 'v=explore';
 
   useEffect(() => {
     document.title = 'Cornac Workbench · Beauty recommendation journeys';
@@ -115,20 +123,25 @@ export default function Journeys() {
         from = await load(statePath(start.pair, id)); path.push(id);
       }
       const shown = start.revealed || path.length > 1;
+      // v=tour&sc=N or v=explore; without v, a trail opens explore and anything else opens the tour.
+      const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const startMode = params.get('v') === 'explore' || (params.get('v') !== 'tour' && path.length > 1) ? 'explore' : 'tour';
+      const startScene = Math.min(5, Math.max(1, Math.trunc(Number(params.get('sc'))) || 1));
       // The address bar keeps its URL until the visitor changes something.
-      written.current = buildHash({pair: start.pair, seed: start.seed, strategy: start.strategy, trail: path, revealed: shown, kiosk: start.kiosk});
-      home.current = [start.pair, start.seed];
+      written.current = `${buildHash({pair: start.pair, seed: start.seed, strategy: start.strategy, trail: path, revealed: shown, kiosk: start.kiosk})}&${startMode === 'tour' ? `v=tour&sc=${startScene}` : 'v=explore'}`;
+      home.current = [start.pair, start.seed, start.strategy];
       if (start.kiosk) window.__kioskIdleMs ??= 60000;
       setManifest(data); setCatalog(items); setMedia(images);
       setPairId(start.pair); setSeedId(start.seed); setTrail(path); setStrategy(start.strategy); setRevealed(shown); setKiosk(start.kiosk);
+      setMode(startMode); setScene(startScene);
     })().catch(e => setError(e.message));
   }, []);
 
   useEffect(() => {
     if (!pairId) return;
-    const hash = buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk});
+    const hash = `${buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk})}&${view}`;
     if (hash !== written.current) {written.current = hash; history.replaceState(history.state, '', `#${hash}`);}
-  }, [pairId, seedId, strategy, trail, revealedOnce, kiosk]);
+  }, [pairId, seedId, strategy, trail, revealedOnce, kiosk, view]);
 
   useEffect(() => {
     if (!showDetails || !manifest || benchmarks) return;
@@ -182,13 +195,14 @@ export default function Journeys() {
     if (revealedOnce) (document.querySelector('.is-target .choose-product:not(:disabled)') || heading.current)?.focus();
   }, [revealedOnce]);
 
+  useEffect(() => {
+    if (mode === 'explore' && toExplore.current) {toExplore.current = false; heading.current?.focus({preventScroll: true});}
+  }, [mode]);
+
   function reset(nextPair, nextSeed) {
     ++requestVersion.current;
     setBusy(true); setNode(null); setWhy(false); setHistoryOpen(false); setGuess(null);
     setPairId(nextPair); setSeedId(nextSeed); setTrail([nextSeed]); setNotice('New journey started.');
-  }
-  function reveal(item) {
-    setGuess(item); setRevealed(true); setNotice(revealText(pair, targetRank(node.shelves[strategy], target), targetRank(node.traditional, target)));
   }
   async function choose(item, base = trail) {
     const from = resolved.get(statePath(pairId, base[base.length - 1]));
@@ -204,15 +218,23 @@ export default function Journeys() {
       heading.current?.focus({preventScroll: true});
     } catch (e) {if (version === requestVersion.current) {setError(e.message); setBusy(false);}}
   }
-  // The loop picks the first right-hand card it can follow, preferring one the shopper has not bought yet.
-  const followable = synced ? node.shelves[strategy].map(row => row.item).filter(item => node.next[String(item)]) : [];
-  const firstRight = followable.find(item => !node.history.includes(item)) ?? followable[0];
+  function undo() {
+    if (trail.length < 2 || busy) return;
+    setTrail(previous => previous.slice(0, -1)); setNotice('Choice undone. Explore another direction.');
+  }
+  const nextScene = () => setScene(step => Math.min(5, step + 1));
+  function explore() {toExplore.current = true; setMode('explore'); scrollTo(0, 0);}
+  // Attract loop: tour scenes 1-3 (flipping scene 3's picking rule once), then start again.
+  const firstCode = trailNodes[0]?.buckets[0];
+  const codeCaption = firstCode?.size > 1 ? `One code, ${firstCode.size.toLocaleString()} products.` : 'One code, one product.';
   const loop = [
-    {caption: 'A real shopper bought these products.', ms: 3000, action: () => {setShowDetails(false); setShareOpen(false); setRevealed(false); scrollTo(0, 0); reset(...home.current);}},
-    {caption: `They bought ${target != null ? itemShort(media, catalog, target) : 'this'} next.`, ms: 4000, action: () => phase === 'hook' && synced ? reveal(null) : false},
-    {caption: 'Follow the shopper and watch the lists react.', ms: 4000, action: () => phase === 'explore' && !depth && synced && node.next[String(target)] ? choose(target) : false},
-    {caption: 'Pick anything.', ms: 4000, action: () => phase === 'explore' && firstRight != null ? choose(firstRight) : false},
-    {caption: 'Two choices, two different stories.', ms: 6000, action: () => terminal ? undefined : phase === 'explore' && firstRight != null ? choose(firstRight) : false},
+    {caption: 'A real shopper bought these products.', ms: 4000, action: () => {
+      setShowDetails(false); setShareOpen(false); setRevealed(false); setMode('tour'); setScene(1); setStrategy(home.current[2]); scrollTo(0, 0); reset(home.current[0], home.current[1]);
+    }},
+    {caption: `They bought the ${target != null ? itemShort(media, catalog, target) : ''}.`, ms: 5000, action: () => target != null && ready ? setRevealed(true) : false},
+    {caption: 'Two recommenders, one history.', ms: 5000, action: () => setScene(2)},
+    {caption: codeCaption, ms: 4000, action: () => setScene(3)},
+    {caption: codeCaption, ms: 5000, action: () => firstCode?.size > 1 ? setStrategy(value => value === 'one_cosine' ? 'one_popularity' : 'one_cosine') : false},
   ];
   function download() {
     const result = {schema_version: 1, pair: pairId, seed: seedId, state_ids: trail, history: node.history,
@@ -253,7 +275,7 @@ export default function Journeys() {
 
   const card = tone => (row, i) => <ProductCard key={row.item} card={row} catalog={catalog} media={media} tone={tone} phase={phase} showDetails={showDetails}
     change={(tone === 'traditional' ? left : right)?.rows[i]} isTarget={isTarget(row.item)} isGuess={!depth && revealed && guess === row.item} follow={!depth && isTarget(row.item)}
-    disabled={busy} onPick={phase === 'hook' ? reveal : choose} onInspect={setInspected}
+    disabled={busy} onPick={choose} onInspect={setInspected}
     prepare={() => node.next[String(row.item)] && load(statePath(pairId, node.next[String(row.item)])).catch(() => {})}/>;
   const single = node?.buckets.every(bucket => bucket.size === 1);
   return <>
@@ -262,24 +284,29 @@ export default function Journeys() {
       <span>Cornac <span className="brand-workbench">Workbench</span></span><a className="preferred-signature" href="https://preferred.ai/" target="_blank" rel="noreferrer">by <strong>PreferredAI<span>.</span></strong></a></div>
       <input type="file" accept=".json,application/json" ref={replayFile} onChange={replay} hidden aria-label="Journey replay file"/>
       {globalThis.CORNAC_DIAGNOSTICS ? <div className="header-actions"><a className="button" href="?view=diagnostics">Open diagnostic workbench</a></div> : null}</header>
-    <main className="journey-main" id="journey-main" tabIndex={-1}>
+    <main className={`journey-main${mode === 'tour' ? ' tour-main' : ''}`} id="journey-main" tabIndex={-1}>
       {error ? <div className="message error" role="alert">{error}<button className="button" onClick={() => location.reload()}>Reload journey</button></div> : null}
-      {!manifest || !node || !pair ? <p role="status" className="loading">Preparing your Beauty journey…</p> : <>
+      {mode === 'tour' ? manifest && pair && ready ? <Tour scene={scene} onScene={setScene}
+        pair={pair} seed={pair.seeds.find(row => row.id === seedId)} node={trailNodes[trailNodes.length - 1]} nodes={trailNodes} trail={trail}
+        catalog={catalog} media={media} benchmark={benchmark} strategy={strategy} setStrategy={setStrategy} choose={choose} undo={undo}
+        revealed={revealed} onReveal={() => setRevealed(true)} guess={guess} onGuess={setGuess} showDetails={showDetails}
+        kiosk={kioskStep >= 0} onNext={nextScene} onExplore={explore} load={load}/>
+        : <p role="status" className="loading">Preparing your Beauty journey…</p>
+      : !manifest || !node || !pair ? <p role="status" className="loading">Preparing your Beauty journey…</p> : <>
         <div className="journey-intro">{revealLine ? <><p className="journey-question" id="journey-question">{question}</p><h1 className="reveal-line">{revealLine}</h1></> : <h1 id="journey-question">{question}</h1>}</div>
         <section className="journey-context" aria-labelledby="journey-question">
           <HistoryStrip history={node.history} depth={depth} catalog={catalog} media={media} open={historyOpen} onToggle={() => setHistoryOpen(open => !open)} stripRef={timeline}/>
-          {phase === 'hook' ? null : <div className="journey-controls"><span className="progress-label">{terminal ? 'Journey complete' : `Choice ${depth + 1} of ${manifest.max_choices}`}<span className="progress-dots" aria-hidden="true">{Array.from({length: manifest.max_choices}, (_, i) => <i key={i} className={i < depth ? 'done' : ''}/>)}</span></span>
-            <button className="button" disabled={!depth || busy} onClick={() => {setTrail(previous => previous.slice(0, -1)); setNotice('Choice undone. Explore another direction.');}}><ArrowLeft size={14}/>Undo</button>
+          <div className="journey-controls"><span className="progress-label">{terminal ? 'Journey complete' : `Choice ${depth + 1} of ${manifest.max_choices}`}<span className="progress-dots" aria-hidden="true">{Array.from({length: manifest.max_choices}, (_, i) => <i key={i} className={i < depth ? 'done' : ''}/>)}</span></span>
+            <button className="button" disabled={!depth || busy} onClick={undo}><ArrowLeft size={14}/>Undo</button>
             {terminal ? null : <><button className="button" disabled={busy} onClick={() => reset(pairId, seedId)}><RotateCcw size={14}/>Restart</button>
               <button className="button" disabled={busy} onClick={download}><Download size={14}/>Save journey</button></>}
             <button className="button" disabled={busy} onClick={() => replayFile.current.click()}><Upload size={14}/>Replay journey</button>
             <button className="button" onClick={() => setShareOpen(true)}><QrCode size={14} aria-hidden="true"/>Share</button>
-          </div>}
+          </div>
         </section>
-        <div className="journey-live" role="status" aria-live="polite">{busy ? 'Updating recommendations…' : notice}</div>
         <section className={`journey-recommendations ${busy ? 'is-busy' : ''}`} aria-labelledby="recommendations-heading" aria-busy={busy}>
-          <div className="section-caption"><h2 id="recommendations-heading" ref={heading} tabIndex={-1}>{phase === 'hook' ? 'Tap your guess.' : terminal ? 'Final recommendations' : 'Now you choose. Pick anything and watch both lists react.'}</h2>
-            {phase === 'hook' ? <button className="text-button show-me" onClick={() => reveal(null)}>Just show me</button> : <DetailsToggle on={showDetails} onToggle={() => setShowDetails(on => !on)}/>}</div>
+          <div className="section-caption"><h2 id="recommendations-heading" ref={heading} tabIndex={-1}>{terminal ? 'Final recommendations' : 'Now you choose. Pick anything and watch both lists react.'}</h2>
+            <div className="explore-actions"><DetailsToggle on={showDetails} onToggle={() => setShowDetails(on => !on)}/><button className="button" onClick={() => setMode('tour')}>Back to the tour</button></div></div>
           {left ? <ChangeLine pair={pair} left={left} right={right} codes={addressesDiff(parent, node)} open={why} onToggle={() => setWhy(open => !open)}/> : null}
           {terminal && synced ? <Recap pair={pair} picks={node.history.slice(-2).map(item => itemShort(media, catalog, item))}
             left={nodes.slice(1).map((step, i) => shelfDiff(items(nodes[i].traditional), items(step.traditional)).newCount)} codes={nodes.slice(1).map((step, i) => addressesDiff(nodes[i], step))}
@@ -288,30 +315,31 @@ export default function Journeys() {
           <div className="shelf-heading traditional-heading"><div><h3>Ranks products</h3><span className="model-name traditional">{pair.traditional}</span></div></div>
           <div className="product-shelf" data-testid="traditional-shelf">{node.traditional.map(card('traditional'))}</div>
           <div className="shelf-heading semantic-heading"><div><h3>Predicts codes</h3><span className="model-name semantic">{pair.sid}</span></div>
-            {phase === 'hook' ? null : single ? <p className="single-code">One product per code</p>
+            {single ? <p className="single-code">One product per code</p>
               : <label><span className="sr-only">SID → item strategy</span><select aria-label="SID to item strategy" value={strategy} onChange={event => {setStrategy(event.target.value); setInspected(null);}}>
                 {manifest.strategies.map(value => <option key={value} value={value}>{(showDetails ? labels : plainLabels)[value]}</option>)}
               </select></label>}</div>
           <div className="product-shelf" data-testid="sid-shelf">{node.shelves[strategy].map(card('semantic'))}</div>
           </div>
           {showDetails ? <details className="context-contract"><summary>Resolver details</summary><p>{strategy.startsWith('expand') ? 'Expand members in SID order, then take five items. A large bucket can fill the list.' : 'Select one representative from each generated SID bucket.'} {strategy.endsWith('cosine') ? 'Cosine uses the visible history.' : 'Popularity uses training purchases only.'}</p></details> : null}
-          {phase === 'hook' ? null : <div className="journey-setup" role="group" aria-labelledby="setup-heading"><h3 id="setup-heading">Try another model</h3>
+          <div className="journey-setup" role="group" aria-labelledby="setup-heading"><h3 id="setup-heading">Try another model</h3>
             <label>Model pair<select ref={pairSelect} aria-label="Journey model pair" value={pairId} onChange={event => {const selected = manifest.pairs.find(p => p.id === event.target.value); reset(selected.id, selected.seeds[0].id);}}>
               {manifest.pairs.map(row => <option key={row.id} value={row.id}>{row.traditional} + {row.sid}</option>)}
             </select></label>
             <label>Starting history<select aria-label="Starting story" value={seedId} onChange={event => reset(pairId, event.target.value)}>
               {pair.seeds.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}
             </select></label>
-          </div>}
+          </div>
         </section>
         {probeStep ? <SameCodeStep probe={probe} size={nodes[0].buckets.find(bucket => bucket.address.join(',') === probe.address.join(',')).size} pair={pair} catalog={catalog} media={media}
           picked={picked} result={depth ? {same: addressesDiff(parent, node).same, newCount: left.newCount} : null} busy={busy}
           onChoose={(item, swap) => choose(item, swap ? trail.slice(0, 1) : trail)}/> : null}
         <Inspector card={inspected} node={node} catalog={catalog} media={media} pair={pair} showDetails={showDetails} onClose={() => setInspected(null)}/>
         {showDetails ? <Benchmark data={benchmark} all={benchmarks} pairs={manifest.pairs} pair={pair} strategy={strategy}/> : null}
-        {shareOpen ? <SharePanel url={new URL(`#${buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk: false})}`, location.href).href} onClose={() => setShareOpen(false)}/> : null}
-        {kioskStep >= 0 ? <p className="kiosk-caption" aria-live="off">{loop[kioskStep].caption}</p> : null}
+        {shareOpen ? <SharePanel url={new URL(`#${buildHash({pair: pairId, seed: seedId, strategy, trail, revealed: revealedOnce, kiosk: false})}&${view}`, location.href).href} onClose={() => setShareOpen(false)}/> : null}
       </>}
+      <div className="journey-live" role="status" aria-live="polite">{busy ? 'Updating recommendations…' : notice}</div>
+      {kioskStep >= 0 ? <p className="kiosk-caption" aria-live="off">{loop[kioskStep].caption}</p> : null}
       <p className="journey-footnote">Real purchase histories from Amazon Beauty (2014), chosen by the authors. Every recommendation was computed ahead of time; nothing runs live.</p>
     </main>
   </>;
