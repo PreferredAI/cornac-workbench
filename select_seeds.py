@@ -26,8 +26,8 @@ SASREC = ROOT / "runs/www2027-demo-sasrec-beauty-2026-10-25/asset/selected.pt"
 OUTPUT = HERE / "journey-seeds.json"
 OLD = "Deliberately selected resolver-disagreement case; not a representative shopper"
 FIXED = [
-    {"query_index": 145, "label": "Explore a beauty routine", "selection": OLD},
-    {"query_index": 210, "label": "Try a different direction", "selection": OLD},
+    {"query_index": 145, "label": "Makeup & brushes, 16 purchases", "selection": OLD},
+    {"query_index": 210, "label": "Mixed, 7 purchases", "selection": OLD},
 ]
 # Every state needs five codes. 5% of the cohort has fewer than 20 valid DiffGRM
 # codes, so this floor keeps a margin for the histories that follow a choice.

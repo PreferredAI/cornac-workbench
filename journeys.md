@@ -104,8 +104,8 @@ reproduce its stored beams.
 
 | Query | Label | Purchases | Real next purchase | SASRec | LETTER |
 | ---: | --- | ---: | --- | ---: | ---: |
-| 145 | Explore a beauty routine | 16 | item 2739, fine-liner brush | – | #1 |
-| 210 | Try a different direction | 7 | item 2993, dry shampoo | – | #4 |
+| 145 | Makeup & brushes, 16 purchases | 16 | item 2739, fine-liner brush | – | #1 |
+| 210 | Mixed, 7 purchases | 7 | item 2993, dry shampoo | – | #4 |
 | 2574 | Skin care, 8 purchases | 8 | item 667, Olay microdermabrasion | – | #2 |
 | 21060 | Tools & accessories, 8 purchases | 8 | item 10732, nail stamp | #3 | – |
 | 21667 | Hair care, 9 purchases | 9 | item 1024, Nexxus conditioner | #2 | #5 |
@@ -118,72 +118,106 @@ code, LETTER does not list the query-145 brush; the other ranks are the same.
 Since 10 November the page opens on a five-step tour (`src/tour/Tour.jsx`,
 `Scene1.jsx` to `Scene5.jsx`) with the pair's default history, query 145 on
 SASRec + LETTER. A stepper at the top names the steps (`Shopper`, `Two
-recommenders`, `One code`, `You steer`, `Made with Cornac`) next to `Back`,
-`Next` and `Skip tour`; the arrow keys also move between steps. Each step has
-one heading, one action and a closing sentence that appears after the action.
+recommenders`, `SID to item`, `Next items`, `Made with Cornac`) next to `Back`,
+`Next` and `Skip tour`; the arrow keys and the step dots also move between
+steps. In steps 1-4, an item whose short name equals that of another item in
+the history, on the starting lists or on the step's screen shows its full title
+instead (for query 145, item 2739 reads "Real Techniques Fine Liner Brush").
 
-1. **The shopper.** "A real shopper bought these 16 beauty products." (the
-   count follows the history) above all purchases as a photo grid (phones
-   show the last eight until `All 16` is pressed), then "What did they buy
-   next? Pick one." and four photo cards sorted by item index:
-   the real next purchase and three decoys, the first products of SASRec's top
-   five and then of LETTER's two one-per-code lists that are neither the
-   target nor in the history, preferring distinct short names. A pick, or
-   `Just show me`, marks the real card `They bought this` and the picked one
-   `Your guess`, and the closing line reads "It was the {name}. Hard to guess.
-   Recommenders try this for millions of shoppers."
-2. **Two recommenders, one history.** "Two models saw the same 16
-   purchases." The reveal line (for query 145, "LETTER had it at #1. SASRec
-   didn't list it.") is followed by two columns, "Ranks products" (SASRec,
-   "Ranks all 12,068 products directly.") and "Predicts a code first" (LETTER,
-   "Predicts a short code, like a shelf label shared by similar products, then
-   picks a product with that code."), each with its top five as photos and the
-   real purchase badged; products whose short names coincide show their full
-   titles. The closing line is "LETTER's first code was right.
-   Now look at that code.", or a variant when the SID model ranks the target
-   lower or misses it. This step reveals the answer if step 1 did not.
-3. **One code, 1,643 products.** The SID model's first code
-   (`code 195·184·83·0`), "Any of these would count as the right code. Which
-   product you see depends on a picking rule.", the code's product categories
-   as bars (573 skin care, 366 hair care, 353 makeup, 159 bath and body, 106
-   tools and accessories, 86 fragrance), and a switch between `Most popular`
-   (item 695, a Hawaiian Tropic sunscreen) and `Closest to this history` (item
-   2739, the brush) that shows one large product card and sets the policy.
-   After the first switch the closing line "That is why Cornac scores code
-   models three ways." appears with LETTER's Recall@5 on the 22,363 held-out
-   queries: right code 0.196, right product 0.017 (one per code, closest to
-   the history) and collision-corrected 0.004. On RPG and TIGER pairs every
-   bucket has one product, so the step reads "One code, one product." and
-   shows no switch.
-4. **You steer.** "Add a purchase and watch both lists." The two lists with
-   `Choose` buttons and code links (for LETTER on query 145, codes of 1,643,
-   31, 2, 1 and 32 products), the last six purchases (`All n` shows the rest)
-   and `Undo`. After a choice a sentence describes the change, for example
-   "SASRec rewrote 4 of its 5 picks. LETTER kept the same 5 codes." after the
-   brush; cards are marked new or moved. Before the first choice on the LETTER
-   pairs, the chip `Try two products that share a code` opens the same-code
-   step "Two products, one code." with items 88 and 610. After the second
-   choice one sentence sums up the journey ("You picked {a}, then {b}. SASRec
-   changed {x} then {y} picks; LETTER ...").
-5. **Made with Cornac.** "Everything you saw came from one Cornac
-   experiment." The eight-line `Experiment` listing from `paper.tex`, the
-   Recall@5 chart of all eight pairs, three lines (9 models, one data split,
-   one metric suite; three views of a code model; every state computed ahead
-   of time), `pip install cornac`, a QR code for
-   `https://github.com/PreferredAI/cornac`, and the buttons `Explore freely`,
-   `Share this journey` and `Start over`.
+1. **Shopper.** "One user's purchase history: 16 items from Amazon Beauty."
+   (the count follows the history) above all purchases as numbered photos
+   (phones show the last eight until `All 16` is pressed) and a `History` menu
+   with the six histories, then "Which item did this user buy next? Pick one.",
+   `Show the answer` and four photo cards sorted by item index: the real next
+   purchase and three decoys, the first items of SASRec's top 5 and then of the
+   SID model's most-similar and most-popular one-item-per-SID lists that are
+   neither the target nor in the history, preferring distinct short names. A
+   pick, or `Show the answer`, marks the real card `Next purchase` and the
+   picked one `Your guess`.
+2. **Two recommenders.** "SASRec and LETTER recommend from the same history."
+   The result line (for query 145, "LETTER ranks the next purchase #1. SASRec
+   does not have it in its top 5.") is followed by two columns, `Sequential
+   model` (SASRec, "Scores all 12,068 items and shows the top 5.") and
+   `Generative SID model` (LETTER, "Generates 5 Semantic IDs (SIDs), short token
+   sequences computed from item text; several items can share one SID."; when
+   each SID on the list belongs to one item, the line ends "Each of these SIDs
+   belongs to one item."). Each column lists its top 5 with photos, SASRec's
+   items with their item IDs and LETTER's with their SIDs (`195·184·83·0`; RPG's
+   32-token SIDs read `32-part SID`), and the next purchase badged. This step
+   reveals the answer if step 1 did not.
+3. **SID to item.** The opening follows the history, not the resolver. For
+   query 145: "LETTER predicted the next purchase's SID, but 1,643 items share
+   it." and "It is LETTER's #1 SID. Which item LETTER shows from each SID is
+   decided by a resolver:"; when each SID on the list belongs to one item, "Each
+   of these SIDs belongs to one item." and "So the resolver does not change the
+   list." Two switches set the resolver, `Items per SID` (`One item per SID` |
+   `All items per SID`) and `Order within a SID` (`Most similar` | `Most
+   popular`), with a note on the two scores. One row per generated SID gives
+   its rank, the SID, the number of items that share it (1,643, 31, 2, 1 and 32
+   for query 145) and the item that the resolver shows; under `All items per
+   SID`, rows that the first five items do not reach read `Not used`. `Show
+   ranking` opens one SID at a time: its items in the chosen order with their
+   similarity or purchase counts (the brush first at similarity 0.954; by
+   popularity, item 695, a sunscreen) and `Categories in this SID` as bars (573
+   skin care, 366 hair care, 353 makeup, 159 bath and body, 106 tools and
+   accessories, 86 fragrance). The step ends with "Cornac evaluates SID models
+   at three levels (LETTER, Recall@5, 22,363 test users):" and three tiles:
+   `SID-level` 0.196, `Item-level` 0.017 (it follows the resolver on screen)
+   and `CCE` 0.004.
+4. **Next items.** One step with two views. The first, "How each model reads the
+   history", shows "Items 88 and 610 have the same LETTER SID. Pick one to see
+   what each model reads and recommends." above two cards (photo, title, `item
+   {id}`, SID), neither picked at first. Below are the two columns, each with an
+   input row under its heading, "SASRec reads item IDs" and "LETTER reads SIDs":
+   a count of the earlier positions (`13 earlier`), then the last three
+   positions of the input as numbered cells (item IDs on light blue, SIDs on
+   light purple), then the model's top 5. Cards show the item ID and, on the SID
+   side, the SID, which opens a panel with the items that share it. Picking an
+   item appends it to both input rows as a filled cell, `17 · added` (the row
+   moves on by one), and shows each model's next top 5 with new items marked; a
+   line under the columns compares the two items: "After item 88 or item 610,
+   LETTER reads the same input and predicts the same 5 SIDs. SASRec reads two
+   different item IDs; its two top-5 lists share 0 of 5 items." Nothing is added
+   in this view. On the other histories and on the DiffGRM pairs the two items
+   are the two lowest-numbered items of the first SID with at least two items on
+   the starting lists that have stored next states; on RPG and TIGER pairs the
+   view reads "Each of the 5 {sid} SIDs here belongs to one item, so there are
+   no two items with the same SID to compare." `Choose items to add` opens the
+   second view, "Add an item to the history and compare the new top 5.": the
+   history strip with `Undo`, a result line, and the same two columns with `Add`
+   buttons, the resolver fixed to "Resolver: one item per SID, most similar."
+   After the brush the result line reads "SASRec: 4 of 5 items changed. LETTER:
+   same 5 SIDs."; after the second item a recap names both items and both
+   changes. `How each model reads the history` goes back to the first view
+   without changing the journey, and entering step 4 with a journey in progress
+   opens the second view.
+5. **Made with Cornac.** "The Cornac experiment behind this demo". The
+   `Experiment` listing from `paper.tex` beside three numbered captions that
+   light up their part of the listing (one split and protocol for all models;
+   sequential and SID models in one list; item-level, SID-level and CCE metrics
+   from the same predictions), the Recall@5 chart at full width (item-level,
+   SID-level and CCE bars for each model, DIGER last), "How each SID model
+   handles collisions (items that share a SID)" with one line each for TIGER and
+   DIGER, RPG, LETTER and DiffGRM, `Install Cornac` with `pip install cornac`,
+   `Copy`, a link and a QR code for `https://github.com/PreferredAI/cornac`, and
+   the buttons `Open the full workbench` ("All 8 model pairs, 6 histories and 4
+   resolvers, with save and replay.") and `Start over` ("Back to step 1.").
 
-`Explore freely`, or `Skip tour` on any step, opens the full screen of 9
-November with the answer already revealed and a `Back to the tour` button: the
-history strip, the two lists under the headings "Ranks products" and "Predicts
-codes", the change line with `Why?`, the summary card `What happened` after the
-second choice, `Undo`, `Restart`, `Save journey`, `Replay journey` and `Share`,
-the policy menu, the same-SID step on query 145 of the LETTER pairs, and "Try
-another model" with the model pair and starting history. `Details` shows the
-resolver names, SID codes, resolver notes, a Recall@5 chart of all eight pairs
-and the held-out metric table; on RPG and TIGER pairs the policy menu is
-replaced by "One product per code". In the bucket view, a code with more than
-12 products also shows its product categories.
+`Open the full workbench`, or `Skip tour` on any step, opens the full screen
+with the answer already revealed and a `Back to the tour` button: "Purchase
+history: {n} items. Which item did this user buy next?" with the result line,
+the history strip, `Undo`, `Restart`, `Save journey`, `Replay journey` and
+`Share`, then "Add an item to the history and compare the new top 5." with
+`Details`, the two columns `Sequential model` and `Generative SID model` with
+the resolver menu (`One item per SID, most similar` and the other three), the
+change line with `Why?`, the recap `What happened` after the second choice, the
+step "Two items, one SID" on query 145 of the LETTER pairs, and "Try another
+model" with `Model pair` and `Starting history`. Each SID card links to a panel,
+"One SID, {n} items", with its categories and its items by popularity and by
+similarity. `Details` shows the technical resolver names, SIDs in brackets,
+scores, resolver notes, a Recall@5 chart of all eight pairs and the held-out
+metric table. When each SID on screen belongs to one item (always on the TIGER
+pairs), the resolver menu is replaced by "One item per SID".
 
 The page keeps the mode and step and the journey in the URL hash
 (`#p=<pair>&h=<history>&s=<strategy>&t=<state>,<state>&r=1&v=tour&sc=<n>`,
@@ -192,8 +226,8 @@ and no `v` opens the full screen. `Share` opens a panel with a QR code of that
 link, the link itself and `Copy link`; the QR code is drawn by the `qrcode`
 package, which is loaded only when needed. With `k=1` in the hash the page runs
 in kiosk mode for a booth screen: after 60 s without input it plays tour steps
-1-3 with captions (the shopper, the reveal, the two lists, the first code with
-the picking rule switched once) and starts again, until someone touches the
+1-3 with captions (the shopper, the reveal, the two lists, the first SID with
+the resolver switched once) and starts again, until someone touches the
 screen or presses a key. Reduced motion turns the loop off. Columns stack below
 760 px. The provenance of the data is stated once, in a footnote at the bottom
 of every step; selection updates are announced to screen readers.
@@ -438,13 +472,16 @@ Chromium from the shared default cache `~/.cache/ms-playwright` (leave
 Evidence persists under `JOURNEY_EVIDENCE_DIR` (default `papers/www2027-demo/`):
 the receipt `journeys-validation.json` and
 `figures/journeys-{desktop,desktop-bert-mlm,mobile,mobile-viewport}.png`.
-`web/scripts/capture-figure.mjs` writes the two paper figures from the default
-SASRec/LETTER journey (query 145) in a 1536×1024 window, each cropped to the
-tour column from the heading to the end of the step:
-`figures/journeys-paper-scene2.png` (step 2 after the reveal) and
-`figures/journeys-paper-scene3.png` (step 3 after one switch of the picking
-rule). It prints their sizes and crop rows; with `--og` it writes the 1200×630
-link preview of step 1 before the pick, `web/public/og.png`, instead.
+`web/scripts/capture-figure.mjs` writes the three paper figures from the default
+SASRec/LETTER journey (query 145) in a 1000×1100 window at device scale 2, each
+cropped to the tour column: `figures/journeys-paper-scene2.png` (step 2 after
+the reveal, from the heading to the third list row),
+`figures/journeys-paper-scene3.png` (step 3 under the default resolver with row
+1's ranking open, from the heading to its sixth item and category bars) and
+`figures/journeys-paper-scene4.png` (step 4's first view with item 88 picked,
+from the two item cards to the third list row). It prints their sizes and crop
+rows; with `--og` it writes the 1200×630 link preview of step 2 after the
+reveal, `web/public/og.png`, instead.
 Downloads and failure screenshots stay in node-local scratch (`os.tmpdir()`;
 `JOURNEY_QA_DIR` overrides). Legacy API tests and `test:browser` exercise the
 preserved diagnostics through port 8080.
@@ -525,3 +562,19 @@ usability study. The same job ran the Python tests (17 journey, 11 diagnostic;
 28 passed). The paper figures are 1116×785 px (step 2, rows 171–956)
 and 1116×668 px (step 3, rows 171–839), crops of the 1536×1024
 window; the paper sets them side by side at half the text width each.
+
+Validation on 10 November, after the seventh round of tour changes: Slurm job
+361886 (`runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/web_qa_r2.sh`) built
+`web/dist` and passed 58 journey Chromium checks on `carpet` (AMD EPYC 9654,
+Chromium 156.0.8078.4). They cover each step as described above, including the
+resolver switches and rankings in step 3, both views of step 4 (the two items
+with one SID for every LETTER and DiffGRM pair and history, the input rows
+lining up, adding, `Undo` and the recap), the collision lines in step 5,
+`Open the full workbench`, the page title and link preview, and on the full
+screen the eight pairs, the SID panel, save and replay with a tampered file,
+`Details`, the kiosk captions and that no visible text says "code". The receipt records no console errors, no
+external or `/api/` requests and no failed responses. First render took 149.8
+ms and one choice 44.7 ms; these are scripted timings, not a usability study.
+The same job ran the Python tests (17 journey, 11 diagnostic; 28 passed) and
+wrote the paper figures: 1904×1026 px (step 2), 1904×1132 px (step 3) and
+1904×1262 px (step 4).

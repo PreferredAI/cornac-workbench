@@ -41,7 +41,7 @@ export function SharePanel({url, onClose}) {
 }
 
 // Categorical slots 1-3 of the dataviz reference palette, validated on white; every bar also carries its value.
-const series = {item: ['Item', '#2a78d6', 'Right product'], sid: ['SID', '#eb6834', 'Right code'], cce: ['CCE', '#1baf7a', 'Collision-corrected']};
+const series = {item: ['Item', '#2a78d6', 'Item-level'], sid: ['SID', '#eb6834', 'SID-level'], cce: ['CCE', '#1baf7a', 'CCE']};
 const BAR = 12, GAP = 2, GROUP = 14, LABEL = 112, VALUE = 46, AXIS = 22;
 function barPath(x, y, w, h) {
   const r = Math.min(4, w, h / 2);
@@ -57,7 +57,8 @@ function chartRows(pairs, data, strategy) {
   return [...models].map(([name, bars]) => ({name, bars}));
 }
 
-export function RecallChart({pairs, data, strategy, policy, current, showDetails = true}) {
+// `extra` rows ({name, bars: [['item', v], ['sid', v], ['cce', v]]}) follow the pair rows.
+export function RecallChart({pairs, data, strategy, policy, current, showDetails = true, extra = []}) {
   const box = useRef(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -65,7 +66,8 @@ export function RecallChart({pairs, data, strategy, policy, current, showDetails
     observer.observe(box.current);
     return () => observer.disconnect();
   }, []);
-  const rows = chartRows(pairs, data, strategy);
+  const rows = [...chartRows(pairs, data, strategy), ...extra];
+  const name = key => series[key][showDetails ? 0 : 2];
   let y = 4;
   const placed = rows.map(row => {const top = y; y += row.bars.length * (BAR + GAP) - GAP + GROUP; return {...row, top};});
   const bottom = y - GROUP + 6;
@@ -73,9 +75,9 @@ export function RecallChart({pairs, data, strategy, policy, current, showDetails
   const plot = Math.max(80, width - LABEL - VALUE);
   const x = value => LABEL + value / max * plot;
   const ticks = Array.from({length: Math.round(max / 0.05) + 1}, (_, i) => i * 0.05);
-  const summary = rows.map(row => `${row.name}: ${row.bars.map(([key, value]) => `${series[key][0]} ${value.toFixed(3)}`).join(', ')}`).join('. ');
+  const summary = rows.map(row => `${row.name}: ${row.bars.map(([key, value]) => `${name(key)} ${value.toFixed(3)}`).join(', ')}`).join('. ');
   return <figure className="recall-chart">
-    <ul className="chart-legend">{Object.values(series).map(([label, color, plain]) => <li key={label}><i style={{background: color}}/>{showDetails ? label : plain}</li>)}<li className="chart-policy">{showDetails ? 'SID models' : 'Code models'}: {policy}</li></ul>
+    <ul className="chart-legend">{Object.values(series).map(([label, color, plain]) => <li key={label}><i style={{background: color}}/>{showDetails ? label : plain}</li>)}<li className="chart-policy">{showDetails ? 'SID models' : 'Resolver'}: {policy}</li></ul>
     <div ref={box}>{width ? <svg width={width} height={bottom + AXIS} viewBox={`0 0 ${width} ${bottom + AXIS}`} role="img" aria-label={`Recall@5 by model. ${summary}.`}>
       <title>Recall@5 by model</title>
       {ticks.map(tick => <g key={tick}><line className={tick ? 'chart-grid' : 'chart-axis'} x1={x(tick)} x2={x(tick)} y1={0} y2={bottom}/>
@@ -84,20 +86,20 @@ export function RecallChart({pairs, data, strategy, policy, current, showDetails
         <text className={`chart-label${current.includes(row.name) ? ' is-current' : ''}`} x={LABEL - 10} y={row.top + (row.bars.length * (BAR + GAP) - GAP) / 2} dominantBaseline="central" textAnchor="end">{row.name}</text>
         {row.bars.map(([key, value], i) => {
           const top = row.top + i * (BAR + GAP);
-          return <g key={key}><title>{`${row.name} · ${series[key][0]}: ${value.toFixed(4)}`}</title>
+          return <g key={key}><title>{`${row.name} · ${name(key)}: ${value.toFixed(4)}`}</title>
             <rect x={LABEL} y={top - GAP / 2} width={plot + VALUE} height={BAR + GAP} fill="transparent"/>
             <path d={barPath(LABEL, top, x(value) - LABEL, BAR)} fill={series[key][1]}/>
             <text className="chart-value" x={x(value) + 5} y={top + BAR / 2} dominantBaseline="central">{value.toFixed(3)}</text></g>;
         })}
       </g>)}
     </svg> : null}</div>
-    <figcaption>Recall@5 on {data[0].query_count.toLocaleString()} held-out shoppers.</figcaption>
+    <figcaption>Recall@5 on {data[0].query_count.toLocaleString()} test users.</figcaption>
   </figure>;
 }
 
 export function BucketBreakdown({info, showDetails}) {
   if (!(info?.size > 12) || !info.categories?.length) return null;
-  return <div className="bucket-breakdown"><h3>{showDetails ? 'Bucket categories' : "What's in this code"}</h3>
+  return <div className="bucket-breakdown"><h3>{showDetails ? 'Bucket categories' : 'Categories in this SID'}</h3>
     <ul>{info.categories.map(([name, value]) => <li key={name}><span>{name}</span>
       <span className="breakdown-track" aria-hidden="true"><span style={{width: `${value / info.size * 100}%`}}/></span><strong>{value.toLocaleString()}</strong></li>)}</ul>
   </div>;

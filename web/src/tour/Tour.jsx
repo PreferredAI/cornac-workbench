@@ -7,7 +7,7 @@ import Scene4 from './Scene4.jsx';
 import Scene5 from './Scene5.jsx';
 import './tour.css';
 
-export const steps = ['Shopper', 'Two recommenders', 'One code', 'You steer', 'Made with Cornac'];
+export const steps = ['Shopper', 'Two recommenders', 'SID to item', 'Next items', 'Made with Cornac'];
 const scenes = [Scene1, Scene2, Scene3, Scene4, Scene5];
 
 export default function Tour({scene, onScene, ...props}) {

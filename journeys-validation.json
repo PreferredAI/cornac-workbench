@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-09T17:16:18.545Z",
+  "date": "2026-11-10T15:35:31.534Z",
   "url": "http://127.0.0.1:8110",
   "browser": "156.0.8078.4",
   "browserPath": "Playwright Chromium; Browser plugin not available",
@@ -15,8 +15,8 @@
     "cores": 384,
     "node": "v24.15.0"
   },
-  "firstRenderMs": 142.859873,
-  "choiceMs": 54.277655000000095,
+  "firstRenderMs": 149.80707199999995,
+  "choiceMs": 44.68933399999969,
   "checks": [
     {
       "name": "scene 1 shows the 16 purchases with photos",
@@ -27,11 +27,15 @@
       "status": "passed"
     },
     {
-      "name": "a wrong guess shows both badges and the takeaway",
+      "name": "a wrong guess shows both badges and no takeaway",
       "status": "passed"
     },
     {
-      "name": "Just show me reveals without a guess",
+      "name": "Show the answer reveals without a guess",
+      "status": "passed"
+    },
+    {
+      "name": "scene 1: the History picker restarts the tour on that history",
       "status": "passed"
     },
     {
@@ -43,27 +47,87 @@
       "status": "passed"
     },
     {
-      "name": "scene 2: two lists of five, the real purchase on the code side",
+      "name": "scene 2: two lists of five, the next purchase on the SID side",
       "status": "passed"
     },
     {
-      "name": "scene 3: one code, 1,643 products in six categories",
+      "name": "scene 2: item ids for SASRec, SIDs for LETTER",
       "status": "passed"
     },
     {
-      "name": "scene 3: the picking rule swaps 695 and 2739",
+      "name": "scene 2: the SID model line does not change with the resolver",
       "status": "passed"
     },
     {
-      "name": "scene 3 on RPG: one code, one product",
+      "name": "scene 2: the result line for each history",
       "status": "passed"
     },
     {
-      "name": "scene 4: a choice loads the stored next state",
+      "name": "scene 3: two resolver controls and five SID rows",
       "status": "passed"
     },
     {
-      "name": "scene 4: the change line matches a recount",
+      "name": "scene 3: Most popular swaps 695 and 2739 in row 1",
+      "status": "passed"
+    },
+    {
+      "name": "scene 3: All items per SID leaves rows 2-5 unused",
+      "status": "passed"
+    },
+    {
+      "name": "scene 3: Show ranking opens one SID at a time",
+      "status": "passed"
+    },
+    {
+      "name": "scene 3 on RPG: each SID belongs to one item",
+      "status": "passed"
+    },
+    {
+      "name": "scene 3: the opening follows the history, not the resolver",
+      "status": "passed"
+    },
+    {
+      "name": "one name per item in steps 1-4",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: phase 1 previews two items with one SID",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: the two input rows line up",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: cards show item IDs and SIDs; the SID opens its panel",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: every purchase shown, full names in card titles",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: repeated short names show the full title",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: the SID model stays on one item per SID, most similar",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: an Add loads the stored next state",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: the result line matches a recount",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: back to phase 1 and forward again keeps the journey",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: re-entering with a journey in progress opens phase 2",
       "status": "passed"
     },
     {
@@ -71,11 +135,15 @@
       "status": "passed"
     },
     {
-      "name": "scene 4: two products that share a code",
+      "name": "scene 4: two items with one SID for every LETTER and DiffGRM pair and history",
       "status": "passed"
     },
     {
-      "name": "scene 4: second choice gives the recap and ten final suggestions",
+      "name": "scene 4: RPG and TIGER have no two items with one SID",
+      "status": "passed"
+    },
+    {
+      "name": "scene 4: two Adds give the recap and ten final suggestions",
       "status": "passed"
     },
     {
@@ -83,11 +151,47 @@
       "status": "passed"
     },
     {
-      "name": "scene 5: QR code and Share this journey",
+      "name": "scene 5: listing and captions side by side, chart below at full width",
       "status": "passed"
     },
     {
-      "name": "Explore freely, then Start over",
+      "name": "scene 5: the chart ends with a DIGER row",
+      "status": "passed"
+    },
+    {
+      "name": "scene 5: how each SID model handles collisions",
+      "status": "passed"
+    },
+    {
+      "name": "scene 5: a caption lights up its part of the listing",
+      "status": "passed"
+    },
+    {
+      "name": "scene 5: Install Cornac copies the install line and links the repository",
+      "status": "passed"
+    },
+    {
+      "name": "scene 5: two buttons, no Share",
+      "status": "passed"
+    },
+    {
+      "name": "Open the full workbench, then Start over",
+      "status": "passed"
+    },
+    {
+      "name": "index.html: title, description and link preview",
+      "status": "passed"
+    },
+    {
+      "name": "branding: PreferredAI favicon, touch icon and header mark",
+      "status": "passed"
+    },
+    {
+      "name": "header: Cornac Workbench and Start over reload the bare page",
+      "status": "passed"
+    },
+    {
+      "name": "footnote: pre-computed from step 4 on and in explore",
       "status": "passed"
     },
     {
@@ -107,6 +211,10 @@
       "status": "passed"
     },
     {
+      "name": "explore: two items that share a SID",
+      "status": "passed"
+    },
+    {
       "name": "explore: Save and Replay; a tampered file is rejected",
       "status": "passed"
     },
@@ -119,11 +227,19 @@
       "status": "passed"
     },
     {
+      "name": "sids.json gives every item in the SID model states its SID",
+      "status": "passed"
+    },
+    {
       "name": "catalog covers every shown item",
       "status": "passed"
     },
     {
       "name": "kiosk captions play scenes 1-3 and stop on input",
+      "status": "passed"
+    },
+    {
+      "name": "no visible text says \"code\", in the tour or in explore",
       "status": "passed"
     },
     {
@@ -150,108 +266,108 @@
   ],
   "files": {
     "web/src/Journeys.jsx": {
-      "bytes": 26266,
-      "sha256": "bafb2a6c3f4f3e28dd8e8e434f908236dfa08ebeb24ae4b77ec4fa0ae7e9ed9f"
+      "bytes": 26954,
+      "sha256": "3bdb85f0e299e9090a062cfc8119e1e420e2abd3c98280967429188dcb0fb39a"
     },
     "web/src/journeyParts.jsx": {
-      "bytes": 9386,
-      "sha256": "3fda2d61007761cc0492a7d154fdcc7f654035a05a71a5ba62304a3eb628b4ec"
+      "bytes": 10682,
+      "sha256": "66275867912915a071e9fe34e36c3b65347ee4c037580a11e784fb5fbfaa3a4c"
     },
     "web/src/journeyExtras.jsx": {
-      "bytes": 6948,
-      "sha256": "70204bbf76707325fd3102c72d445d064f9a4e28537c2b071cc1f3d4fad7b056"
+      "bytes": 7086,
+      "sha256": "efdd42c219735ddbf9d263d022819c18a78964642e477f4a538b3fc634519602"
     },
     "web/src/journeys.css": {
-      "bytes": 15707,
-      "sha256": "518c7bc13df13623fc6acd7e607a3e1f04d41a947ce0f792ec6a98e13c10c995"
+      "bytes": 15975,
+      "sha256": "7236d7c5130f3b6c8627a830c365d272688b0a6c2ce53de3c94bc445ec123d2d"
     },
     "web/src/tour/Scene1.jsx": {
-      "bytes": 3739,
-      "sha256": "75337ccfb76cc64015bf5170c1fc6518a8ca883a68b3754c9e466ad8138731f0"
+      "bytes": 3691,
+      "sha256": "e3acd15c55a592f23f3d8eac4c31350297f773ef252fa2e0f8fc6d50c5e9af3b"
     },
     "web/src/tour/Scene2.jsx": {
-      "bytes": 3182,
-      "sha256": "4103cf39d7c93907dcf8d76957ea84043df1bf809f292fe1d429ed988089aa2c"
+      "bytes": 2790,
+      "sha256": "9eea5f7bd175fd1b0305bb89b3ae7c1a53ba09d19e074d50e3934b7ad8e3972b"
     },
     "web/src/tour/Scene3.jsx": {
-      "bytes": 4082,
-      "sha256": "069a00fc998ccd7cefef02651d06164bc2d2f6d141ed58d61e832ab25d58a6e6"
+      "bytes": 8656,
+      "sha256": "88cb06c5c1648a7e9092438c44e2ce5badb71466debd836151d2b874337f9301"
     },
     "web/src/tour/Scene4.jsx": {
-      "bytes": 7183,
-      "sha256": "6c2c6af3467322505a199560cc87a3182fba5a8ec00f907148d8880d2ba044d8"
+      "bytes": 12953,
+      "sha256": "a9b7622c239afe4b40e6b2b8bd7e608a02659534004eb603fd873a99cf8c226f"
     },
     "web/src/tour/Scene5.jsx": {
-      "bytes": 4207,
-      "sha256": "9ea6591a07e3085d98d720a4af3d2a11da5f4e0024626ae4355bef828b18ac08"
+      "bytes": 9263,
+      "sha256": "7338d43397bfd451c938833a95da00c0ad05a2f4919e9fc4280459f0de3fadeb"
     },
     "web/src/tour/Tour.jsx": {
-      "bytes": 2505,
-      "sha256": "c85eb5853a6af933f2e8d18e9df907e43c0833159c9d3e82f1ed5df3210a26ba"
+      "bytes": 2509,
+      "sha256": "c6c9511d9c3ecf87026b3e064ba42c50a1ae8167bb649384f8d99f8a00b27719"
     },
     "web/src/tour/scenes.css": {
-      "bytes": 7662,
-      "sha256": "37a83dfea612aeb256522f5476fa0f09734d07d0cecd72462a8fabbdabc4b423"
+      "bytes": 16462,
+      "sha256": "5a8045365f21184b890c56882ce0c9b20fc9dc7c29f43c04a149441018a0a53d"
     },
     "web/src/tour/tour.css": {
-      "bytes": 7714,
-      "sha256": "59d8327ea529fbc87465ad4ab5696fcd93d813b8111b30567791647bd4aa35b3"
+      "bytes": 8452,
+      "sha256": "9630f2f3df5936a97aeb7a1a69b4a413edb86b377df9cdf93e38996ab6be6293"
     },
     "web/src/main.jsx": {
       "bytes": 491,
       "sha256": "b2948c39012c882b50138dc01e47b793157ce44ec7091c8be78491525eea8047"
     },
     "web/index.html": {
-      "bytes": 1183,
-      "sha256": "23aa7f5ba862978f9872d8f4e7f034d061158377f560bf83d6b087a9866767b9"
+      "bytes": 1545,
+      "sha256": "8203654902fa4e07d366b432c98c956f743ef915141c3a5468d7fa22dc624da3"
     },
-    "web/dist/index.html": {
-      "bytes": 1282,
-      "sha256": "f751ad706c489e99ea257729154e2a149d894f8312cdda45c974dd416389a5f1"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/index.html": {
+      "bytes": 1644,
+      "sha256": "3d119ec1dbbe2b552d26cc5f2bbc4e0e5ab0453986815e50df392ca0a34f7602"
     },
-    "web/dist/assets/App-DAKD8PpE.js": {
-      "bytes": 31387,
-      "sha256": "421e9529f7d2640385bcaaafbb2a9638bde921b1a62e7e52197e0c092d308509"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/App-DCwLVzVN.js": {
+      "bytes": 31651,
+      "sha256": "2717e9fc15d7082c6057666b277381522b3c561e2ce7d0ce61dbc90f8f3d7cea"
     },
-    "web/dist/assets/browser-DxxtZpf2.js": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/browser-BMzCWRZw.js": {
       "bytes": 25776,
-      "sha256": "b814bd8ba28d4ca3c6d8408dd73310052a427b337316e6e1f382ca0fd08c1bf8"
+      "sha256": "95a186c00eb75fa83f2c2728de62df677b6dd5d8235471e7dd4b47cf2a5bd5dc"
     },
-    "web/dist/assets/index-CiW85jZl.js": {
-      "bytes": 277573,
-      "sha256": "9b671b7cff6a1970b01a9d4218b548b405acbf4fbe0772efe4aec1cb545449ef"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/index-Dkr533g8.js": {
+      "bytes": 288247,
+      "sha256": "5c2baee901722bad52374c58cb1e28447024b81b2d1fb62a1c29d0161008d0cd"
     },
-    "web/dist/assets/index-GhP8jNzb.css": {
-      "bytes": 51028,
-      "sha256": "483a07a6545f649da439b9ed0a82677cc0063f1886d760b09be3b0a874ea3c72"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/index-G4PLTcag.css": {
+      "bytes": 59716,
+      "sha256": "dea6356aacdded00d5850575023a09a4a013dbe789a1eef0e2141a0d5dcfaf81"
     },
     "web/public/journeys/manifest.json": {
-      "bytes": 23637,
-      "sha256": "33ba9b29253d78581291794e7d527ead10de2701bb6b457fe639010e8e579a3c"
+      "bytes": 23629,
+      "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
     },
-    "web/dist/journeys/manifest.json": {
-      "bytes": 23637,
-      "sha256": "33ba9b29253d78581291794e7d527ead10de2701bb6b457fe639010e8e579a3c"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/journeys/manifest.json": {
+      "bytes": 23629,
+      "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
     },
     "web/public/journeys/media.json": {
       "bytes": 552719,
       "sha256": "64243ba4479ea92b51df74efee2b0216f4a0b81d2280b5498aab6a5b9b3aadbe"
     },
-    "figures/journeys-desktop.png": {
-      "bytes": 138629,
-      "sha256": "b7c2e593277a32fc6fb9df6c48ead5323e8656424ce59a672a1626519b5a2c6d"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-desktop.png": {
+      "bytes": 154630,
+      "sha256": "27e103e3cc64d71449de352759c23af663c63bce68aad35e86fad483e3ba1428"
     },
-    "figures/journeys-desktop-bert-mlm.png": {
-      "bytes": 141564,
-      "sha256": "ca897dae56c01335847965ccce87acdad51e1c5d8e5dfa162339d271d9119ab8"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-desktop-bert-mlm.png": {
+      "bytes": 160161,
+      "sha256": "21cb5065fa86b7d90c85de9a6ab539658fa6f14069db71d15443127dbf9eaef9"
     },
-    "figures/journeys-mobile.png": {
-      "bytes": 123993,
-      "sha256": "375560b90d2923d7c7655aeb2fe495ea07e5ca0977025fd36848124880c823eb"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-mobile.png": {
+      "bytes": 128966,
+      "sha256": "9195431e1ae96b52cc91786e418fe6ef5efd7ed125224d0744e7c92965cc1016"
     },
-    "figures/journeys-mobile-viewport.png": {
-      "bytes": 95608,
-      "sha256": "f756f3d0573238b971a7a005de340c8993dd2e435260a09cdebcdf7e048c8480"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-mobile-viewport.png": {
+      "bytes": 97315,
+      "sha256": "718cea3ffc95a50d3c62a411e24890aa8607def1a3d9b6e45761d0f523660671"
     }
   },
   "scope": "Scripted browser checks of the five-scene tour and the explore screen of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
