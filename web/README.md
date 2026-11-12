@@ -64,6 +64,32 @@ after building. Python 3.12 was tested. Node is needed only for rebuilding/testi
 For development, keep the Python server running and use `npm run dev` in this
 directory. Vite proxies `/api` to the exact loopback host above.
 
+## Typography and paper captures
+
+Apple devices use their native San Francisco system font; other platforms use
+the bundled Google Sans Flex, with a system sans-serif fallback. SF Pro font files
+are not distributed with the site. `font-optical-sizing: auto` lets supporting
+browsers use size-appropriate outlines; no manual SF Pro Text/Display switch is
+needed.
+
+To capture the paper figures in SF Pro, run the existing capture script on macOS
+with Node dependencies and Playwright Chromium installed. From this directory,
+start the journey-only development server:
+
+```bash
+npm run dev -- --port 8110
+```
+
+In another terminal in the same directory:
+
+```bash
+JOURNEY_URL=http://127.0.0.1:8110 JOURNEY_EVIDENCE_DIR=/tmp/cornac-mac-figures node scripts/capture-figure.mjs
+```
+
+The script uses fixed paper viewports and writes the three figures under
+`/tmp/cornac-mac-figures/figures/`. A Linux browser, including one emulating an
+Apple device, does not provide the native Apple font.
+
 ## Verified attendee tasks
 
 1. Select query **7**: native SID credit is positive while both explicit resolvers
