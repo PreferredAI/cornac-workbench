@@ -1,0 +1,49 @@
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:03.800
+Cornac Workbench
+A sequential and a generative SID recommender on one purchase history
+
+2
+00:00:03.800 --> 00:00:09.066
+One user's purchase history from Amazon Beauty.
+Which item did they buy next?
+
+3
+00:00:09.066 --> 00:00:13.016
+They bought a fine-liner brush.
+
+4
+00:00:13.016 --> 00:00:20.466
+A sequential model scores every item.
+A generative SID model generates Semantic IDs (SIDs).
+
+5
+00:00:20.466 --> 00:00:24.932
+LETTER ranks the brush #1. SASRec does not list it.
+
+6
+00:00:24.932 --> 00:00:29.749
+But 1,643 items share LETTER's SID.
+
+7
+00:00:29.749 --> 00:00:37.099
+A resolver picks the item:
+most similar gives the brush, most popular a sunscreen.
+
+8
+00:00:37.099 --> 00:00:47.032
+Two items with the same SID give LETTER the same input
+and the same five SIDs. SASRec's two lists share none.
+
+9
+00:00:47.032 --> 00:00:54.648
+Cornac scores SID models at three levels.
+LETTER, Recall@5: SID 0.196, item 0.017, CCE 0.004.
+
+10
+00:00:54.648 --> 00:01:00.041
+Try the demo!
+cornac-workbench.preferred.ai
+pip install cornac

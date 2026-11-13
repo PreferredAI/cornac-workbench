@@ -1,20 +1,18 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {ArrowLeft} from 'lucide-react';
-import {HistoryStrip, ProductCard, Thumb, addressesDiff, count, itemTitle, shelfDiff} from '../journeyParts.jsx';
+import {HistoryStrip, ProductCard, Thumb, addressesDiff, count, itemTitle, plainLabels, shelfDiff} from '../journeyParts.jsx';
 import {BucketBreakdown} from '../journeyExtras.jsx';
 import {labeler} from './Scene3.jsx';
 import '../journeys.css';
 import './scenes.css';
 
-// The resolver stays fixed here, so both lists react to the new item alone.
-const rule = 'one_cosine';
 const items = cards => cards.map(card => card.item);
 const sidKey = bucket => bucket.address.join(',');
 // Long SIDs (RPG has 32 parts) may wrap after any dot.
 const dotted = address => address.map((part, i) => <React.Fragment key={i}>{i ? <>·<wbr/></> : null}{part}</React.Fragment>);
 const sidLabel = address => <>SID {dotted(address)}</>;
-// SIDs over 8 parts read `32-part SID`, as on steps 2 and 3.
-const sidText = address => address.length > 8 ? `${address.length}-part SID` : address.join('·');
+// SIDs over 8 tokens read `32-token SID`, as on steps 2 and 3.
+const sidText = address => address.length > 8 ? `${address.length}-token SID` : address.join('·');
 
 const itemsPhrase = (left, picks) => left.newCount === picks ? `all ${picks} items changed` : left.newCount ? `${left.newCount} of ${picks} items changed`
   : left.movedCount ? 'same items, new order' : `same ${picks} items`;
@@ -86,9 +84,11 @@ function InputRow({model, input, added, sids}) {
   </div>;
 }
 
-export default function Scene4({pair, seed, node, nodes, trail, catalog, media, choose, undo, revealed, showDetails, load}) {
+// The tour keeps the resolver fixed, so both lists react to the new item alone. The workbench passes its own
+// resolver and shows only the add-items view.
+export default function Scene4({pair, seed, node, nodes, trail, catalog, media, choose, undo, revealed, showDetails, load, workbench = false, rule = 'one_cosine'}) {
   // Phase 1 previews one item of a same-SID pair; phase 2 is the journey. A journey in progress opens phase 2.
-  const [phase, setPhase] = useState(trail.length > 1 ? 2 : 1);
+  const [phase, setPhase] = useState(workbench || trail.length > 1 ? 2 : 1);
   const moved = useRef(false);
   // The journey replays no entry animations when it comes back unchanged.
   const [back, setBack] = useState(null);
@@ -101,7 +101,7 @@ export default function Scene4({pair, seed, node, nodes, trail, catalog, media, 
   const heading = useRef(null);
   const said = useRef(null);
   const root = nodes[0];
-  const same = sameSid(pair, seed, root);
+  const same = workbench ? null : sameSid(pair, seed, root);
   const synced = nodes.length === trail.length && nodes[nodes.length - 1] === node;
   const depth = trail.length - 1;
   const terminal = !Object.keys(node.next).length;
@@ -155,14 +155,16 @@ export default function Scene4({pair, seed, node, nodes, trail, catalog, media, 
     showDetails={showDetails} change={diff?.rows[i]} isTarget={row.item === target} disabled={busy} onPick={pick} onInspect={setInspected} fullName={false} label={label(row.item)} ids
     prepare={() => node.next[String(row.item)] && load(`${pair.id}/states/${node.next[String(row.item)]}.json`).catch(() => {})}/>;
   const input = [...root.history, ...added];
+  const Heading = workbench ? 'h2' : 'h1';
+  const resolver = plainLabels[rule];
 
   return <>
-    <h1 ref={heading} tabIndex={-1}>{phase === 1 ? 'How each model reads the history' : 'Add an item to the history and compare the new top 5.'}</h1>
+    <Heading ref={heading} tabIndex={-1}>{phase === 1 ? 'How each model reads the history' : 'Add an item to the history and compare the new top 5.'}</Heading>
     <div className={`s4${phase === 2 && back === node ? ' is-back' : ''}`} data-phase={phase}>
       {phase === 1 ? same ? <Picker same={same} pair={pair} catalog={catalog} media={media} picked={picked} onPick={item => {setPicked(item); setInspected(null);}} name={label}/>
         : <p className="s4-same-none">Each of the {root.buckets.length} {pair.sid} SIDs here belongs to one item, so there are no two items with the same SID to compare.</p>
         : <>
-          <button className="text-button s4-back" onClick={() => show(1)}>How each model reads the history</button>
+          {workbench ? null : <button className="text-button s4-back" onClick={() => show(1)}>How each model reads the history</button>}
           <div className="s4-history">
             <HistoryStrip history={node.history} depth={depth} catalog={catalog} media={media} collapsible={false} label={label}/>
             <button className="button" disabled={!depth || busy} onClick={undo}><ArrowLeft size={14} aria-hidden="true"/>Undo</button>
@@ -177,7 +179,7 @@ export default function Scene4({pair, seed, node, nodes, trail, catalog, media, 
         <div className="product-shelf" data-testid="traditional-shelf">{shown.traditional.map(card('traditional', left))}</div>
         <div className="shelf-heading semantic-heading"><div><h3>Generative SID model</h3><span className="model-name semantic">{pair.sid}</span>
           {sids ? <InputRow model={pair.sid} input={input} added={added.length} sids={sids}/> : null}
-          <p className="s4-rule">Resolver: one item per SID, most similar.</p></div></div>
+          <p className="s4-rule">{`Resolver: ${resolver.charAt(0).toLowerCase()}${resolver.slice(1)}.`}</p></div></div>
         <div className="product-shelf" data-testid="sid-shelf">{shown.shelves[rule].map(card('semantic', right))}</div>
       </div>
       {bucket ? <div className="s4-code" ref={codePanel}>

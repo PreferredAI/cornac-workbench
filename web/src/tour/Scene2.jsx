@@ -2,10 +2,10 @@ import React, {useEffect} from 'react';
 import {Thumb, revealText, targetRank} from '../journeyParts.jsx';
 import {labeler} from './Scene3.jsx';
 
-// RPG's 32-part SIDs share long prefixes, so a cut-off SID would make different SIDs look alike.
+// RPG's 32-token SIDs share long prefixes, so a cut-off SID would make different SIDs look alike.
 function CodePill({card}) {
   const code = card.address.join('·');
-  const shown = card.address.length > 8 ? `${card.address.length}-part SID` : code;
+  const shown = card.address.length > 8 ? `${card.address.length}-token SID` : code;
   return <span className="tour-code" title={code}>{shown}</span>;
 }
 
@@ -32,7 +32,7 @@ export default function Scene2({pair, seed, nodes, catalog, media, strategy, rev
   // This scene shows the answer, so scene 1 shows it too from now on.
   useEffect(() => {if (target != null && !revealed) onReveal();}, []);
   return <>
-    <h1>{pair.traditional} and {pair.sid} recommend from the same history.</h1>
+    <h1><span className="tour-keep">A sequential model and a generative SID model</span> <span className="tour-keep">recommend from the same history.</span></h1>
     {target == null ? null : <p className="tour-body tour-reveal">{revealText(pair, targetRank(right, target), traditionalRank)}</p>}
     <div className="tour-columns">
       <Column tone="traditional" title="Sequential model" model={pair.traditional} line="Scores all 12,068 items and shows the top 5."

@@ -3,34 +3,37 @@
 The default route is the static **Beauty Recommendation Journeys** screen. It
 opens on a five-step tour (`src/tour/`) with SASRec and LETTER on one real
 Amazon Beauty purchase history: (1) the shopper's purchases as photos and
-"What did they buy next? Pick one." among four products, after which the real
-next purchase is marked; (2) both models' top five side by side, SASRec
-ranking products directly and LETTER predicting a code first; (3) LETTER's
-first code, the 1,643 products that share it by category, a switch between the
-most popular product and the one closest to the history, and LETTER's
-Recall@5 by right code, right product and collision-corrected; (4) up to two
-choices, with a sentence on how each list changed and the same-code example
-"Try two products that share a code"; (5) the Cornac experiment in Python, a
-Recall@5 chart of all eight pairs, `pip install cornac` and a QR code for the
-repository. `Explore freely` (or `Skip tour`) opens the full screen: eight
-model pairs (SASRec or BERT4Rec (MLM), each with LETTER, RPG, DiffGRM or TIGER;
-9,627 prepared states), six starting histories, four resolver strategies,
-bucket inspection with the product categories inside a code, save/replay, and
-`Details` with the technical labels, the Recall@5 chart and the fixed
-full-cohort Cornac 3.1 metrics. The hash keeps the mode and step
-(`v=tour&sc=N` or `v=explore`) and the journey; `Share` shows the link as a QR
-code (the `qrcode` package, loaded only when needed), and `#k=1` turns on kiosk
-mode, which plays tour steps 1-3 with captions after 60 s without input. Photos
-and short names are read from `public/journeys/media.json` and
-`public/journeys/thumbs/` (2,407 WebP files, at most 320 px on a side), written
-by [prepare_media.py](../prepare_media.py); if `media.json` is missing, the
-page skips the guess and shows placeholders. See [journey
+"Which item did this user buy next? Pick one." among four items, after which
+the real next purchase is marked; (2) both models' top five side by side,
+SASRec's items with their item IDs and LETTER's with their SIDs; (3) LETTER's
+top SID, shared by 1,643 items, with two switches for the resolver (one or all
+items per SID; most similar or most popular), the ranking inside each SID, and
+LETTER's Recall@5 at the SID level, at the item level and under CCE; (4) how
+each model reads the history, with items 88 and 610 that share a LETTER SID,
+then up to two added items and a line on how each list changed; (5) the Cornac
+experiment in Python, a Recall@5 chart of all models, `pip install cornac` and
+a QR code for the repository. `Preliminaries` (before step 1,
+`src/tour/Scene0.jsx`, `sc=0`) shows how each kind of model reads a history
+and which items share TIGER's first SID tokens
+(`public/journeys/prefixes.json`). `Open the full workbench` (or `Skip tour`)
+opens the workbench (`src/Explore.jsx`): step 4's layout under menus for the
+sequential model, the SID model (eight pairs, 9,627 prepared states), the
+history (six) and the resolver (four), with the pair's Recall@5 and NDCG@5
+below. The hash keeps the mode and step (`v=tour&sc=N` or `v=explore`) and the
+journey, so a reload or a link reopens it. A `Try the demo!` card in the
+bottom-right corner shows a QR code of the site (the `qrcode` package, loaded
+only when needed), and `#k=1` turns on kiosk mode, which plays tour steps 1-3
+with captions after 60 s without input. `/video/` plays a one-minute captioned
+recording of the tour, made by `node scripts/record-tour.mjs`. Photos and
+short names are read from `public/journeys/media.json` and
+`public/journeys/thumbs/` (2,407 WebP files, at most 320 px on a side),
+written by [prepare_media.py](../prepare_media.py); if `media.json` is
+missing, the page skips the guess and shows placeholders. See [journey
 preparation](../journeys.md). Serve `dist` with any static host for this
-experience; it does not call the Python API. `npm run test:journeys` runs
-29 browser checks against a plain static server on port 8110 and
-writes [the results](../journeys-validation.json) and
-`../figures/journeys-*.png`; `node scripts/capture-figure.mjs` captures the
-paper figures.
+experience; it does not call the Python API. `npm run test:journeys` runs 71
+browser checks against a plain static server on port 8110 and writes [the
+results](../journeys-validation.json) and `../figures/journeys-*.png`; `node
+scripts/capture-figure.mjs` captures the paper figures.
 
 The diagnostic interface described below is retained at `?view=diagnostics`
 and uses the local Python API.

@@ -24,7 +24,7 @@
 .s3-pick {flex:0 1 228px; min-width:0; display:grid; grid-template-columns:64px minmax(0,1fr); align-items:center; gap:10px; padding:4px 10px 4px 4px; border:1px solid #e8edf1; border-radius:10px; background:#fff;}
 .s3-pick:only-child {flex-basis:320px;}
 .s3-pick .thumb {width:64px; height:64px; border:0;}
-.s3-pick p {font-size:14px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.s3-pick p {font-size:14px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-wrap:balance;}
 .s3-pick .status-pill {display:inline-block; margin-top:4px; font-size:11px; padding:1px 7px;}
 .s3-pick.is-target {border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); background:#f2faf7;}
 .s3-pick.is-fresh {animation:s3-pick-in .3s ease-out;}
@@ -40,7 +40,7 @@
 .s3-members li {display:grid; grid-template-columns:22px 48px minmax(0,1fr); align-items:center; gap:8px; min-width:0; padding:3px 8px 3px 2px; border:1px solid #edf1f4; border-radius:8px;}
 .s3-members li.is-shown {background:#f6f1fa; border-color:#d4c1e6;}
 .s3-members .thumb {width:48px; height:48px; border:0;}
-.s3-members p {font-size:13px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.s3-members p {font-size:13px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-wrap:balance;}
 .s3-members small {display:block; margin-top:1px; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums;}
 .s3-member-rank {font-size:12px; font-weight:700; color:var(--muted); text-align:center; font-variant-numeric:tabular-nums;}
 .s3-more {margin-top:8px; font-size:13px; color:var(--muted);}
@@ -84,17 +84,19 @@
 .s4-pick:hover {border-color:#91b8bd;}
 .s4-pick.is-on {border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); background:#f2faf7;}
 .s4-pick .thumb {width:72px; height:72px;}
-.s4-pick p {font-size:15px; font-weight:650; line-height:1.3;}
+.s4-pick p {font-size:15px; font-weight:650; line-height:1.3; text-wrap:balance;}
 .s4-pick .s3-pill {margin-top:5px; vertical-align:top;}
 /* Each model's input under its heading, one grid in both columns so the cells line up; the items added here are filled. */
 .s4-shelves .shelf-heading > div {flex:1 1 auto; min-width:0;}
 .s4-input {align-self:stretch; margin-top:8px;}
 .s4-input-label {font-size:13px; font-weight:650; color:var(--muted);}
-.s4-seq {display:grid; grid-template-columns:auto repeat(3,minmax(0,1fr)); gap:6px; margin:5px 0 0; padding:0; list-style:none;}
-.s4-seq li {display:flex; flex-direction:column; justify-content:center; gap:1px; min-width:0; padding:5px 7px; border-radius:8px;}
-.s4-more {width:min-content; border:1px dashed #c9d5de; color:var(--muted); font-size:13px; line-height:1.25; text-align:center;}
+.s4-seq {display:grid; grid-template-columns:auto repeat(3,minmax(0,1fr)); gap:4px; margin:5px 0 0; padding:0; list-style:none;}
+.s4-seq li {display:flex; flex-direction:column; justify-content:center; gap:1px; min-width:0; padding:5px; border-radius:8px;}
+.s4-more {width:min-content; border:1px dashed #c9d5de; color:var(--muted); font-size:12px; line-height:1.25; text-align:center;}
 .s4-entry {background:#eaf0fb; color:#30578b;}
 .s4-entry.s4-sid {background:#f3edf8; color:#73538e;}
+/* Lets the longest four-token SID (15 characters) fit one cell at the paper's 1000 px width in SF Pro. */
+.s4-entry.s4-sid span {font-size:13.5px; letter-spacing:-.2px;}
 .s4-entry small {font-size:11px; font-weight:600; opacity:.8; font-variant-numeric:tabular-nums;}
 .s4-entry span {font-size:14px; font-weight:650; line-height:1.3;}
 .s4-entry.is-new {background:var(--accent); color:#fff; box-shadow:0 2px 6px #087e7847;}
@@ -145,13 +147,16 @@
 .s5-block h2 {font-size:20px; letter-spacing:-.3px;}
 .s5-collisions ul {display:flex; flex-direction:column; gap:8px; margin:12px 0 0; padding-left:20px;}
 .s5-collisions li {font-size:15px; line-height:1.45;}
-.s5-get {display:flex; align-items:center; justify-content:space-between; gap:16px 28px;}
+/* Install Cornac and the demo on a phone, side by side, each with its QR. */
+.s5-get {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 28px;}
+.s5-get-part {display:flex; align-items:center; justify-content:space-between; gap:16px 24px; min-width:0;}
+.s5-get-part + .s5-get-part {padding-left:28px; border-left:1px solid var(--border);}
 .s5-get-text {display:flex; flex-direction:column; align-items:flex-start; gap:12px; min-width:0;}
 .s5-install {display:flex; flex-wrap:wrap; align-items:center; gap:8px;}
 .s5-pip {display:block; padding:9px 14px; background:#0f2233; color:#e8f1fa; border-radius:8px; font-size:15px;}
 .s5-install .button {min-height:40px; font-size:13px; padding:8px 14px;}
-.s5-repo {font-size:15px; font-weight:600; color:var(--accent-dark); text-underline-offset:3px; overflow-wrap:anywhere;}
-.s5-qr {flex-shrink:0; width:132px; height:132px;}
+.s5-repo,.s5-demo {font-size:15px; font-weight:600; color:var(--accent-dark); text-underline-offset:3px; overflow-wrap:anywhere;}
+.s5-qr,.s5-demo-qr {flex-shrink:0; width:132px; height:132px;}
 .s5-qr svg {display:block; width:100%; height:100%;}
 .s5-actions {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 24px; margin:0; padding:0; list-style:none;}
 .s5-actions li {display:flex; flex-direction:column; align-items:flex-start; gap:8px; min-width:0;}
@@ -166,6 +171,8 @@
   .s3-how:has(> .bucket-breakdown) {grid-template-columns:minmax(0,1fr);}
   .s5-grid {grid-template-columns:minmax(0,1fr);}
   .s5-notes li {flex:none;}
+  .s5-get {grid-template-columns:minmax(0,1fr);}
+  .s5-get-part + .s5-get-part {padding:20px 0 0; border-left:0; border-top:1px solid var(--border);}
 }
 @media (max-width:640px) {
   .s4-change {font-size:15px;}
@@ -192,7 +199,7 @@
   .s4-history .journey-timeline li {flex-basis:72px;}
   .s4-history .journey-timeline .thumb {width:60px; height:60px;}
   .s5-listing {font-size:11px; padding:12px 12px 12px 6px;}
-  .s5-get {flex-direction:column; align-items:flex-start;}
+  .s5-get-part {flex-direction:column; align-items:flex-start;}
   .s5-actions {grid-template-columns:minmax(0,1fr);}
   .s5-actions .button {align-self:stretch;}
 }

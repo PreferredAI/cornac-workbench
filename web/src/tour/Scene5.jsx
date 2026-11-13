@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Compass, Copy, RotateCcw} from 'lucide-react';
 import {plainLabels} from '../journeyParts.jsx';
-import {RecallChart} from '../journeyExtras.jsx';
+import {Qr, RecallChart, demoUrl} from '../journeyExtras.jsx';
 import '../journeys.css';
 import './scenes.css';
 
@@ -111,7 +111,7 @@ export default function Scene5({pair, strategy, showDetails, onExplore, load}) {
     try {await navigator.clipboard.writeText('pip install cornac'); setCopied(true);} catch {getSelection().selectAllChildren(pip.current);}
   }
   const actions = [
-    ['explore', 'Open the full workbench', 'All 8 model pairs, 6 histories and 4 resolvers, with save and replay.', Compass, onExplore],
+    ['explore', 'Open the full workbench', 'All 8 model pairs, 6 histories and 4 resolvers.', Compass, onExplore],
     ['restart', 'Start over', 'Back to step 1.', RotateCcw, startOver],
   ];
 
@@ -133,14 +133,23 @@ export default function Scene5({pair, strategy, showDetails, onExplore, load}) {
       <h2 id="s5-collisions-heading">How each SID model handles collisions (items that share a SID)</h2>
       <ul>{collisions.map(text => <li key={text}>{text}</li>)}</ul>
     </section>
-    <section className="s5-block s5-get" aria-labelledby="s5-get-heading">
-      <div className="s5-get-text">
-        <h2 id="s5-get-heading">Install Cornac</h2>
-        <div className="s5-install"><code className="s5-pip" ref={pip}>pip install cornac</code>
-          <button className="button" onClick={copy}><Copy size={14} aria-hidden="true"/>{copied ? 'Copied' : 'Copy'}</button></div>
-        <a className="s5-repo" href={repository} target="_blank" rel="noreferrer">github.com/PreferredAI/cornac</a>
+    <section className="s5-block s5-get">
+      <div className="s5-get-part">
+        <div className="s5-get-text">
+          <h2 id="s5-get-heading">Install Cornac</h2>
+          <div className="s5-install"><code className="s5-pip" ref={pip}>pip install cornac</code>
+            <button className="button" onClick={copy}><Copy size={14} aria-hidden="true"/>{copied ? 'Copied' : 'Copy'}</button></div>
+          <a className="s5-repo" href={repository} target="_blank" rel="noreferrer">github.com/PreferredAI/cornac</a>
+        </div>
+        <div className="s5-qr" role="img" aria-label="QR code for the Cornac repository on GitHub" dangerouslySetInnerHTML={{__html: qr}}/>
       </div>
-      <div className="s5-qr" role="img" aria-label="QR code for the Cornac repository on GitHub" dangerouslySetInnerHTML={{__html: qr}}/>
+      <div className="s5-get-part s5-phone">
+        <div className="s5-get-text">
+          <h2>Try the demo!</h2>
+          <a className="s5-demo" href={demoUrl} target="_blank" rel="noreferrer">cornac-workbench.preferred.ai</a>
+        </div>
+        <Qr url={demoUrl} label="QR code for the Cornac Workbench" className="s5-demo-qr"/>
+      </div>
     </section>
     <section className="s5-block s5-more">
       <ul className="s5-actions">{actions.map(([key, text, about, Icon, onClick], i) => <li key={key}>

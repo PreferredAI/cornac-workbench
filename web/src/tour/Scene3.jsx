@@ -83,7 +83,7 @@ function opening(sid, node, target, single) {
   if (single) return ['Each of these SIDs belongs to one item.', 'So the resolver does not change the list.'];
   const body = `Which item ${sid} shows from each SID is decided by a resolver:`;
   const card = ['one_cosine', 'one_popularity', 'expand_cosine', 'expand_popularity'].map(key => node.shelves[key].find(row => row.item === target)).find(Boolean);
-  if (card?.bucket_size > 1) return [`${sid} predicted the next purchase's SID, but ${card.bucket_size.toLocaleString()} items share it.`, `It is ${sid}'s #${card.sid_rank} SID. ${body}`];
+  if (card?.bucket_size > 1) return [<><span className="tour-keep">{sid} predicted the next purchase's SID,</span> <span className="tour-keep">but {card.bucket_size.toLocaleString()} items share it.</span></>, `It is ${sid}'s #${card.sid_rank} SID. ${body}`];
   if (node.buckets[0].size > 1) return [`${sid}'s top SID is shared by ${count(node.buckets[0].size, 'item')}.`, body];
   return [`${sid}'s SIDs here are shared by up to ${count(Math.max(...node.buckets.map(row => row.size)), 'item')}.`, body];
 }
@@ -116,8 +116,8 @@ export default function Scene3({pair, seed, node, nodes, catalog, media, benchma
         <p className="s3-note">Most similar: cosine similarity between the item and the history. Most popular: purchases in the training data.</p></div>}
       <ol className="s3-rows">{node.buckets.map((bucket, i) => {
         const k = i + 1, code = bucket.address.join(','), full = bucket.address.join('·');
-        // RPG's 32-part SIDs share long prefixes, so a cut-off SID would make different SIDs look alike.
-        const shown = bucket.address.length > 8 ? `${bucket.address.length}-part SID` : full;
+        // RPG's 32-token SIDs share long prefixes, so a cut-off SID would make different SIDs look alike.
+        const shown = bucket.address.length > 8 ? `${bucket.address.length}-token SID` : full;
         const picks = cards.filter(card => card.sid_rank === k);
         return <li key={code} className={['s3-row', !picks.length && 'is-unused', open === k && 'is-open'].filter(Boolean).join(' ')} data-code={code}>
           <span className="s3-rank">#{k}</span>

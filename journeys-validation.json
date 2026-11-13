@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-10T15:35:31.534Z",
+  "date": "2026-11-13T10:51:45.205Z",
   "url": "http://127.0.0.1:8110",
   "browser": "156.0.8078.4",
   "browserPath": "Playwright Chromium; Browser plugin not available",
@@ -15,8 +15,8 @@
     "cores": 384,
     "node": "v24.15.0"
   },
-  "firstRenderMs": 149.80707199999995,
-  "choiceMs": 44.68933399999969,
+  "firstRenderMs": 134.59793199999996,
+  "choiceMs": 29.026389000000563,
   "checks": [
     {
       "name": "scene 1 shows the 16 purchases with photos",
@@ -44,6 +44,18 @@
     },
     {
       "name": "arrow keys and step dots move between scenes",
+      "status": "passed"
+    },
+    {
+      "name": "step 0: Preliminaries on step 1, arrow keys and the hash",
+      "status": "passed"
+    },
+    {
+      "name": "step 0: two pipelines and TIGER's prefix rows, recounted from the data",
+      "status": "passed"
+    },
+    {
+      "name": "step 0: no spoiler; photos from the history and the prefix panels only",
       "status": "passed"
     },
     {
@@ -87,7 +99,7 @@
       "status": "passed"
     },
     {
-      "name": "one name per item in steps 1-4",
+      "name": "one name per item in steps 1-4 and the workbench",
       "status": "passed"
     },
     {
@@ -171,11 +183,15 @@
       "status": "passed"
     },
     {
+      "name": "scene 5: Try the demo! next to Install Cornac",
+      "status": "passed"
+    },
+    {
       "name": "scene 5: two buttons, no Share",
       "status": "passed"
     },
     {
-      "name": "Open the full workbench, then Start over",
+      "name": "Open the full workbench keeps the journey in its address; Back; Start over",
       "status": "passed"
     },
     {
@@ -191,11 +207,19 @@
       "status": "passed"
     },
     {
-      "name": "footnote: pre-computed from step 4 on and in explore",
+      "name": "header: Start over only, no QR",
       "status": "passed"
     },
     {
-      "name": "Skip tour opens explore; Back to the tour returns",
+      "name": "demo QR card: collapsed, opens on hover, a click pins it, Esc or a second click unpins, Tab opens it",
+      "status": "passed"
+    },
+    {
+      "name": "footnote: pre-computed from step 4 on and in the workbench",
+      "status": "passed"
+    },
+    {
+      "name": "Skip tour opens the workbench with its H1 focused; Back to the tour returns",
       "status": "passed"
     },
     {
@@ -203,27 +227,51 @@
       "status": "passed"
     },
     {
-      "name": "explore: eight pairs load with the policy menu",
+      "name": "workbench: eight pairs via the two model selects, with their scores",
       "status": "passed"
     },
     {
-      "name": "explore: bucket Inspector",
+      "name": "workbench: the History select keeps the pair and the resolver",
       "status": "passed"
     },
     {
-      "name": "explore: two items that share a SID",
+      "name": "workbench: a model change keeps h= and drops t=",
       "status": "passed"
     },
     {
-      "name": "explore: Save and Replay; a tampered file is rejected",
+      "name": "workbench: the Resolver select changes the SID list and the resolver line",
       "status": "passed"
     },
     {
-      "name": "explore: Details shows the chart and the table",
+      "name": "workbench: a SID pill opens the SID panel under the lists",
+      "status": "passed"
+    },
+    {
+      "name": "workbench: no two-items-one-SID comparison, no save, replay or share, none of the old controls",
+      "status": "passed"
+    },
+    {
+      "name": "workbench: two Adds give the recap and ten final suggestions; the reveal line only at depth 0",
+      "status": "passed"
+    },
+    {
+      "name": "workbench: a reload or a link with the journey in its address restores it",
+      "status": "passed"
+    },
+    {
+      "name": "workbench: All models chart with the DIGER row; Recall and NDCG table",
+      "status": "passed"
+    },
+    {
+      "name": "workbench: the SID panel has no prefix list; prefixes.json loads on step 0 only",
       "status": "passed"
     },
     {
       "name": "every pair lists the same six histories",
+      "status": "passed"
+    },
+    {
+      "name": "prefixes.json: every 1-3 token prefix of the TIGER SIDs, with the measured statistic and the files it names",
       "status": "passed"
     },
     {
@@ -235,15 +283,19 @@
       "status": "passed"
     },
     {
-      "name": "kiosk captions play scenes 1-3 and stop on input",
+      "name": "kiosk captions play scenes 1-3 with the demo card open and stop on input",
       "status": "passed"
     },
     {
-      "name": "no visible text says \"code\", in the tour or in explore",
+      "name": "no visible text says \"code\", in the tour or in the workbench",
       "status": "passed"
     },
     {
-      "name": "no horizontal overflow on scenes 1-5 at 1440, 1024 and 390",
+      "name": "no horizontal overflow on steps 0-5 and the workbench at 1440, 1024 and 390",
+      "status": "passed"
+    },
+    {
+      "name": "video page: the one-minute tour, muted and looping, with its captions track",
       "status": "passed"
     },
     {
@@ -266,52 +318,64 @@
   ],
   "files": {
     "web/src/Journeys.jsx": {
-      "bytes": 26954,
-      "sha256": "3bdb85f0e299e9090a062cfc8119e1e420e2abd3c98280967429188dcb0fb39a"
+      "bytes": 12240,
+      "sha256": "5f64feedc7204028e323b5eaeb538c398afde743591faaa99fbffea34fe3b156"
     },
     "web/src/journeyParts.jsx": {
-      "bytes": 10682,
-      "sha256": "66275867912915a071e9fe34e36c3b65347ee4c037580a11e784fb5fbfaa3a4c"
+      "bytes": 6596,
+      "sha256": "cc3172d78d6cec02074ca2846ae0f37cf02a83e79f802b177085951662a68d84"
     },
     "web/src/journeyExtras.jsx": {
-      "bytes": 7086,
-      "sha256": "efdd42c219735ddbf9d263d022819c18a78964642e477f4a538b3fc634519602"
+      "bytes": 7437,
+      "sha256": "5c8d93ec043e7b0203f0236b7b0947fb6b43b49a20ec98f02c7038c0432e98af"
     },
     "web/src/journeys.css": {
-      "bytes": 15975,
-      "sha256": "7236d7c5130f3b6c8627a830c365d272688b0a6c2ce53de3c94bc445ec123d2d"
+      "bytes": 10660,
+      "sha256": "fcb3f632f3cf1a00bf68237b2304f985ad30bba8c464decffccc837c6501d63e"
+    },
+    "web/src/Explore.jsx": {
+      "bytes": 5810,
+      "sha256": "5b6a44465db58783d981a8ecbc523691ecf448ee46645513e7afd25ed03be269"
+    },
+    "web/src/explore.css": {
+      "bytes": 4654,
+      "sha256": "f1c545d9ae104066d215973a244a06408024f07bc719c55354c02fdb7c30f4b2"
+    },
+    "web/src/tour/Scene0.jsx": {
+      "bytes": 9190,
+      "sha256": "bd6b88d035cc6af43587bc0cce09da1bda75a5930b42fc4aab29fa38dbfcc972"
     },
     "web/src/tour/Scene1.jsx": {
       "bytes": 3691,
       "sha256": "e3acd15c55a592f23f3d8eac4c31350297f773ef252fa2e0f8fc6d50c5e9af3b"
     },
     "web/src/tour/Scene2.jsx": {
-      "bytes": 2790,
-      "sha256": "9eea5f7bd175fd1b0305bb89b3ae7c1a53ba09d19e074d50e3934b7ad8e3972b"
+      "bytes": 2874,
+      "sha256": "de0fa007ffa973e11dbd0c67e53815de2c7d66b2b84bc2079729a6d256605134"
     },
     "web/src/tour/Scene3.jsx": {
-      "bytes": 8656,
-      "sha256": "88cb06c5c1648a7e9092438c44e2ce5badb71466debd836151d2b874337f9301"
+      "bytes": 8729,
+      "sha256": "ddd4f6c923320a5f3ad58402cd1dd0702ac1c3fe60be4dc67efa8393f8c4ccd9"
     },
     "web/src/tour/Scene4.jsx": {
-      "bytes": 12953,
-      "sha256": "a9b7622c239afe4b40e6b2b8bd7e608a02659534004eb603fd873a99cf8c226f"
+      "bytes": 13235,
+      "sha256": "fa59ed51851c03c0a132a93e2908bedb2570bc81ec45e6544d56f0527423cb89"
     },
     "web/src/tour/Scene5.jsx": {
-      "bytes": 9263,
-      "sha256": "7338d43397bfd451c938833a95da00c0ad05a2f4919e9fc4280459f0de3fadeb"
+      "bytes": 9635,
+      "sha256": "08e4bb36716e07436b7ecb325a8c6c4011ec4a58485aaf9dc990545ce110c3d1"
     },
     "web/src/tour/Tour.jsx": {
-      "bytes": 2509,
-      "sha256": "c6c9511d9c3ecf87026b3e064ba42c50a1ae8167bb649384f8d99f8a00b27719"
+      "bytes": 2802,
+      "sha256": "3bf83bb293580a52888368cd94c6589b3754765d758bbdf2c80e467396ef9a9b"
     },
     "web/src/tour/scenes.css": {
-      "bytes": 16462,
-      "sha256": "5a8045365f21184b890c56882ce0c9b20fc9dc7c29f43c04a149441018a0a53d"
+      "bytes": 17130,
+      "sha256": "a50e6b0eba873da310a4db1b5153355aefe698d5016c54f588688b267b8472aa"
     },
     "web/src/tour/tour.css": {
-      "bytes": 8452,
-      "sha256": "9630f2f3df5936a97aeb7a1a69b4a413edb86b377df9cdf93e38996ab6be6293"
+      "bytes": 17395,
+      "sha256": "627a6b1f8744c5721245587de56f7194d34f3b3b19635467750c3a210c6956a0"
     },
     "web/src/main.jsx": {
       "bytes": 491,
@@ -321,31 +385,31 @@
       "bytes": 1545,
       "sha256": "8203654902fa4e07d366b432c98c956f743ef915141c3a5468d7fa22dc624da3"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/index.html": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/index.html": {
       "bytes": 1644,
-      "sha256": "3d119ec1dbbe2b552d26cc5f2bbc4e0e5ab0453986815e50df392ca0a34f7602"
+      "sha256": "5eed0d37a186352b2e8ead29036e21c0839aeb86dd3f6a8a39b132b012cf982d"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/App-DCwLVzVN.js": {
-      "bytes": 31651,
-      "sha256": "2717e9fc15d7082c6057666b277381522b3c561e2ce7d0ce61dbc90f8f3d7cea"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/App-CwyGM-Ww.js": {
+      "bytes": 31905,
+      "sha256": "dd1df02cee6fa11ca99159491856308d4a59b60aeb0f4a610135deb2f0180b60"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/browser-BMzCWRZw.js": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/browser-BerzQ1vn.js": {
       "bytes": 25776,
-      "sha256": "95a186c00eb75fa83f2c2728de62df677b6dd5d8235471e7dd4b47cf2a5bd5dc"
+      "sha256": "f4d8a426ae9e6e94af87e3b3b557492191f73b9a88c372b5d674d403eaff2575"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/index-Dkr533g8.js": {
-      "bytes": 288247,
-      "sha256": "5c2baee901722bad52374c58cb1e28447024b81b2d1fb62a1c29d0161008d0cd"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/index-B7nelKry.css": {
+      "bytes": 66889,
+      "sha256": "ceefa496bc49fc0b37237dc74546d75a7e63c27d6206e4a84a1279a2e6c9ff10"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/assets/index-G4PLTcag.css": {
-      "bytes": 59716,
-      "sha256": "dea6356aacdded00d5850575023a09a4a013dbe789a1eef0e2141a0d5dcfaf81"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/index-CoTrahy-.js": {
+      "bytes": 284028,
+      "sha256": "bf95b964581072be3562109163f992551baaf36f6dc0af8af577ee9440aaa7db"
     },
     "web/public/journeys/manifest.json": {
       "bytes": 23629,
       "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/dist/journeys/manifest.json": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/journeys/manifest.json": {
       "bytes": 23629,
       "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
     },
@@ -353,22 +417,26 @@
       "bytes": 552719,
       "sha256": "64243ba4479ea92b51df74efee2b0216f4a0b81d2280b5498aab6a5b9b3aadbe"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-desktop.png": {
-      "bytes": 154630,
-      "sha256": "27e103e3cc64d71449de352759c23af663c63bce68aad35e86fad483e3ba1428"
+    "web/public/journeys/prefixes.json": {
+      "bytes": 318908,
+      "sha256": "5bdf01c9ff380b0924bb2a4b5fdb322141bb12ccd9f299210deac2ed59639dbc"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-desktop-bert-mlm.png": {
-      "bytes": 160161,
-      "sha256": "21cb5065fa86b7d90c85de9a6ab539658fa6f14069db71d15443127dbf9eaef9"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/evidence/figures/journeys-desktop.png": {
+      "bytes": 164813,
+      "sha256": "fd06561c113a0ba2eab83c37c3f7fbf24f724714c0dd3be75450b51fd7c6747f"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-mobile.png": {
-      "bytes": 128966,
-      "sha256": "9195431e1ae96b52cc91786e418fe6ef5efd7ed125224d0744e7c92965cc1016"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/evidence/figures/journeys-desktop-bert-mlm.png": {
+      "bytes": 167949,
+      "sha256": "86e8427199298c014ae42bfc84713193095302719cf1e29f6d7549d74aea6bfb"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r2/qa/evidence/figures/journeys-mobile-viewport.png": {
-      "bytes": 97315,
-      "sha256": "718cea3ffc95a50d3c62a411e24890aa8607def1a3d9b6e45761d0f523660671"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/evidence/figures/journeys-mobile.png": {
+      "bytes": 129471,
+      "sha256": "d567ed8645639a14dd654119a9775668b828126911c4f0eadbc95ad6eec13c82"
+    },
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/evidence/figures/journeys-mobile-viewport.png": {
+      "bytes": 97834,
+      "sha256": "72c7e610ac97b3dbee03e216501b9a8fc91dd93af1ed9503e03b50e6b844c8a0"
     }
   },
-  "scope": "Scripted browser checks of the five-scene tour and the explore screen of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
+  "scope": "Scripted browser checks of the tour (step 0 and the five steps) and the workbench of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study."
 }

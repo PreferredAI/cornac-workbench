@@ -124,6 +124,18 @@ steps. In steps 1-4, an item whose short name equals that of another item in
 the history, on the starting lists or on the step's screen shows its full title
 instead (for query 145, item 2739 reads "Real Techniques Fine Liner Brush").
 
+On step 1 the left button reads `Preliminaries` and opens step 0 (`Scene0.jsx`,
+`sc=0`; `←` on step 1 does the same), which is not in the stepper: "Two ways to
+predict a user's next purchase", the sequential model (reads item IDs, scores
+all 12,068 items, recommends the 5 highest) and TIGER (translates each item
+into a few semantic tokens, from general to specific; reads the history as
+SIDs; generates the next SID one token at a time; looks up its item) as
+numbered pipelines, then "Similar items share the first tokens": the share of
+item pairs in the same top-level category (84% when two items share TIGER's
+first token, 23% for random pairs) and `Show items` rows for an example history
+item's 1-, 2- and 3-token prefixes, from `public/journeys/prefixes.json`
+(written by `runs/.../tour-r8/prefix/make_prefixes.py`).
+
 1. **Shopper.** "One user's purchase history: 16 items from Amazon Beauty."
    (the count follows the history) above all purchases as numbered photos
    (phones show the last eight until `All 16` is pressed) and a `History` menu
@@ -201,36 +213,39 @@ instead (for query 145, item 2739 reads "Real Techniques Fine Liner Brush").
    DIGER, RPG, LETTER and DiffGRM, `Install Cornac` with `pip install cornac`,
    `Copy`, a link and a QR code for `https://github.com/PreferredAI/cornac`, and
    the buttons `Open the full workbench` ("All 8 model pairs, 6 histories and 4
-   resolvers, with save and replay.") and `Start over` ("Back to step 1.").
+   resolvers.") and `Start over` ("Back to step 1.").
 
-`Open the full workbench`, or `Skip tour` on any step, opens the full screen
-with the answer already revealed and a `Back to the tour` button: "Purchase
-history: {n} items. Which item did this user buy next?" with the result line,
-the history strip, `Undo`, `Restart`, `Save journey`, `Replay journey` and
-`Share`, then "Add an item to the history and compare the new top 5." with
-`Details`, the two columns `Sequential model` and `Generative SID model` with
-the resolver menu (`One item per SID, most similar` and the other three), the
-change line with `Why?`, the recap `What happened` after the second choice, the
-step "Two items, one SID" on query 145 of the LETTER pairs, and "Try another
-model" with `Model pair` and `Starting history`. Each SID card links to a panel,
-"One SID, {n} items", with its categories and its items by popularity and by
-similarity. `Details` shows the technical resolver names, SIDs in brackets,
-scores, resolver notes, a Recall@5 chart of all eight pairs and the held-out
-metric table. When each SID on screen belongs to one item (always on the TIGER
-pairs), the resolver menu is replaced by "One item per SID".
+`Open the full workbench`, or `Skip tour` on any step, opens the workbench
+(`src/Explore.jsx`) with the answer already revealed: "Compare any two models
+on any history." with `Back to the tour`, four menus (`Sequential model`,
+`Generative SID model`, `History`, `Resolver`; a model change keeps the
+history), the result line on the original history, and step 4's add-items view
+(history strip, `Undo`, the two input rows, the two lists with `Add`, the
+change line and, after two choices, the recap). Each SID pill opens a panel,
+"One SID, {n} items", with its categories. When each SID on screen belongs to
+one item (always on the TIGER pairs), a line says that the resolver does not
+change the list. Below the lists, "Scores for this pair" gives four Recall@5
+tiles (item-level for both models, SID-level and CCE for the SID model), `All
+models` a Recall@5 chart of every model and `Recall and NDCG` the pair's table.
 
 The page keeps the mode and step and the journey in the URL hash
-(`#p=<pair>&h=<history>&s=<strategy>&t=<state>,<state>&r=1&v=tour&sc=<n>`,
-or `v=explore`), so a reload or a shared link restores it; a hash with choices
-and no `v` opens the full screen. `Share` opens a panel with a QR code of that
-link, the link itself and `Copy link`; the QR code is drawn by the `qrcode`
-package, which is loaded only when needed. With `k=1` in the hash the page runs
-in kiosk mode for a booth screen: after 60 s without input it plays tour steps
-1-3 with captions (the shopper, the reveal, the two lists, the first SID with
-the resolver switched once) and starts again, until someone touches the
-screen or presses a key. Reduced motion turns the loop off. Columns stack below
-760 px. The provenance of the data is stated once, in a footnote at the bottom
-of every step; selection updates are announced to screen readers.
+(`#p=<pair>&h=<history>&s=<strategy>&t=<state>,<state>&r=1&v=tour&sc=<n>`, or
+`v=explore`), so a reload or a shared link restores it; a hash with choices and
+no `v` opens the workbench. A `Try the demo!` card in the bottom-right corner
+(from 900 px) opens on hover or keyboard focus with a QR code of
+`https://cornac-workbench.preferred.ai/`; a click keeps it open and Esc closes
+it. The QR code is drawn by the `qrcode` package, which is loaded only when
+needed. With `k=1` in the hash the page runs in kiosk mode for a booth screen:
+after 60 s without input it plays tour steps 1-3 with captions (the shopper,
+the reveal, the two lists, the first SID with the resolver switched once) and
+the QR card open, and starts again, until someone touches the screen or presses
+a key. Reduced motion turns the loop off. Columns stack below 760 px. The
+provenance of the data is stated once, in a footnote at the bottom of every
+step; selection updates are announced to screen readers.
+
+`/video/` (`public/video/`) is a one-minute captioned recording of the tour,
+made by `web/scripts/record-tour.mjs` on macOS; it plays muted, loops, and has
+the captions as a WebVTT track as well.
 
 ## Product photos and short names
 
@@ -578,3 +593,21 @@ ms and one choice 44.7 ms; these are scripted timings, not a usability study.
 The same job ran the Python tests (17 journey, 11 diagnostic; 28 passed) and
 wrote the paper figures: 1904×1026 px (step 2), 1904×1132 px (step 3) and
 1904×1262 px (step 4).
+
+Validation on 13 November, after the eighth round (Preliminaries, the rebuilt
+workbench, the demo QR card and the video page): Slurm job 365030
+(`runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/web_qa_r8.sh`) built
+`web/dist` and passed 71 journey Chromium checks on `ceramic` (AMD EPYC 9654,
+Chromium 156.0.8078.4). The new and rewritten checks cover step 0 recounted
+from the data on all six histories, `Preliminaries` with the arrow keys and the
+hash, the workbench menus (a model change keeps the history), its score tiles,
+chart and table, a reload restoring a journey, the `Try the demo!` card (hover,
+click to pin, Esc, keyboard focus, hidden below 900 px, open during the kiosk
+loop) with each QR code compared against the `qrcode` output for its address,
+`prefixes.json` against `sids.json`, and the video page. The receipt records no
+console errors, no external or `/api/` requests and no failed responses. First
+render took 134.6 ms and one choice 29.0 ms; these are scripted timings, not a
+usability study. The same job ran the Python tests (17 journey, 11 diagnostic;
+28 passed). The paper figures were captured on macOS by the author with
+`scripts/capture-figure.mjs` against this build: 1904×1102 px (step 2),
+1904×1130 px (step 3) and 1904×1260 px (step 4).

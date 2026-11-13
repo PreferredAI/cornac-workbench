@@ -1,0 +1,71 @@
+/* The full workbench: step 4's add-items view with a settings bar, in the tour's 1100 px column. */
+.journey-main:has(> .wb) {max-width:1164px; padding:0 32px 24px;}
+.journey-main:has(> .wb) > .journey-footnote {margin-top:28px;}
+.wb {min-width:0;}
+.wb-title {display:flex; align-items:flex-start; justify-content:space-between; gap:12px 24px; padding-top:28px;}
+.wb-title h1 {font-size:32px; line-height:1.2; letter-spacing:-.7px; font-weight:650;}
+.wb-title h1:focus {outline:none;}
+.wb-title .button {min-height:40px; padding:8px 14px; font-size:14px; font-weight:600;}
+
+.wb-settings {margin-top:20px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 20px;}
+/* History and resolver names are longer than model names. */
+.wb-selects {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) repeat(2,minmax(0,1.25fr)); gap:12px 16px;}
+.wb-select {display:flex; flex-direction:column; gap:6px; min-width:0;}
+.wb-select > span {font-size:13px; font-weight:650; color:var(--muted);}
+.wb-select select {width:100%; min-height:40px; padding:7px 28px 7px 10px; border-color:#cbd6df; border-radius:8px; font-size:14px; color:var(--ink);}
+.wb-single {margin-top:12px; font-size:14px; color:var(--muted);}
+.wb-reveal {margin-top:18px; font-size:20px; line-height:1.35; font-weight:650; color:var(--accent-dark);}
+
+/* Scene 4's heading, an h2 here. */
+.wb > h2 {margin-top:26px; font-size:24px; line-height:1.25; letter-spacing:-.4px;}
+.wb > h2:focus {outline:none;}
+
+/* Scores: the step-3 tiles, then two panels that open in place. */
+.wb-scores {margin-top:32px;}
+.wb-scores > h2 {font-size:24px; line-height:1.25; letter-spacing:-.4px;}
+.wb-scores > p {margin-top:6px; font-size:15px; line-height:1.4; color:var(--muted);}
+.wb-tiles {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0 0;}
+.wb-tiles > div {display:flex; flex-direction:column; justify-content:space-between; gap:8px; min-width:0; background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px;}
+.wb-tiles dt {display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px;}
+.wb-tiles .model-name {font-size:12px;}
+.wb-tile-level {font-size:14px; font-weight:650;}
+.wb-tile-note {flex-basis:100%; font-size:12px; line-height:1.35; color:var(--muted);}
+.wb-tiles dd {margin:0; font-size:32px; font-weight:650; letter-spacing:-.6px; line-height:1.2; font-variant-numeric:tabular-nums;}
+.wb-more {margin-top:12px; background:#fff; border:1px solid var(--border); border-radius:12px;}
+.wb-more > summary {display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; font-size:15px; font-weight:650; cursor:pointer; list-style:none;}
+.wb-more > summary::-webkit-details-marker {display:none;}
+.wb-more > summary svg {flex-shrink:0; color:var(--muted); transition:transform .15s;}
+.wb-more[open] > summary {border-bottom:1px solid var(--border);}
+.wb-more[open] > summary svg {transform:rotate(180deg);}
+.wb-more > div {padding:16px 18px;}
+.wb-more .recall-chart {margin:0;}
+.wb-more .recall-chart > div {max-width:none;}
+.wb-table {width:100%; border-collapse:collapse; font-size:14px;}
+/* Overrides the global th/td rules in styles.css. */
+.wb-table th,.wb-table td {position:static; padding:10px 12px; border:0; border-bottom:1px solid var(--border); background:none; color:var(--ink); font-size:inherit; white-space:normal; text-align:right; font-variant-numeric:tabular-nums;}
+.wb-table th:first-child,.wb-table th:nth-child(2),.wb-table td:nth-child(2) {text-align:left;}
+.wb-table thead th {font-size:12px; font-weight:650; color:var(--muted);}
+.wb-table tbody th {font-weight:650;}
+.wb-table tbody tr:last-child > * {border-bottom:0;}
+
+@media (prefers-reduced-motion:reduce) {.wb-more > summary svg {transition:none;}}
+@media (max-width:1000px) {
+  .wb-selects,.wb-tiles {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:640px) {
+  .journey-main:has(> .wb) {padding:0 16px 20px;}
+  .wb-title {flex-direction:column; gap:12px; padding-top:20px;}
+  .wb-title h1 {font-size:24px; letter-spacing:-.4px;}
+  .wb-settings {padding:14px;}
+  .wb-selects {gap:10px 12px;}
+  .wb-select:nth-child(n+3) {grid-column:1 / -1;}
+  .wb-reveal {font-size:18px;}
+  .wb > h2,.wb-scores > h2 {font-size:20px; letter-spacing:-.3px;}
+  .wb-tiles {grid-template-columns:minmax(0,1fr); gap:8px;}
+  .wb-tiles > div {flex-direction:row; align-items:center; gap:12px; padding:10px 12px;}
+  .wb-tiles dd {font-size:24px;}
+  .wb-more > summary {padding:12px 14px;}
+  .wb-more > div {padding:14px;}
+  .wb-table {font-size:13px;}
+  .wb-table th,.wb-table td {padding:9px 6px;}
+}

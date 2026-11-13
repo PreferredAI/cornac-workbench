@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {Copy} from 'lucide-react';
+import {QrCode} from 'lucide-react';
 
 // URL hash: #p=<pair>&h=<seed>&s=<strategy>&t=<state>,<state>&r=1&k=1. Trail ids are checked against `next` by the caller.
 export function readHash(hash, manifest, fallbackStrategy) {
@@ -13,31 +13,40 @@ export function readHash(hash, manifest, fallbackStrategy) {
 export const buildHash = ({pair, seed, strategy, trail, revealed, kiosk}) =>
   [`p=${pair}`, `h=${seed}`, `s=${strategy}`, trail.length > 1 && `t=${trail.slice(1).join(',')}`, revealed && 'r=1', kiosk && 'k=1'].filter(Boolean).join('&');
 
-export function SharePanel({url, onClose}) {
-  const dialog = useRef(null);
-  const input = useRef(null);
+// The public address, also when the site runs locally: a phone cannot open the presenter's localhost.
+export const demoUrl = 'https://cornac-workbench.preferred.ai/';
+
+export function Qr({url, label, className = ''}) {
   const [svg, setSvg] = useState('');
-  const [copied, setCopied] = useState(false);
   useEffect(() => {
-    if (!dialog.current.open) dialog.current.showModal();
     let live = true;
     // The SVG string is generated locally from our own URL, so inserting it as HTML is safe.
     import('qrcode').then(({default: QRCode}) => QRCode.toString(url, {type: 'svg', margin: 1})).then(text => {if (live) setSvg(text);}).catch(() => {});
     return () => {live = false;};
   }, [url]);
-  async function copy() {
-    try {await navigator.clipboard.writeText(url); setCopied(true);} catch {input.current.select();}
-  }
-  return <dialog className="share-panel" ref={dialog} role="dialog" aria-labelledby="share-heading" onClose={onClose}
-    onClick={event => {if (event.target === dialog.current) dialog.current.close();}}>
-    <div className="share-body">
-      <div className="share-title"><h2 id="share-heading">Share</h2><button className="button" onClick={() => dialog.current.close()}>Close</button></div>
-      <div className="share-qr" role="img" aria-label="QR code of this journey's link" dangerouslySetInnerHTML={{__html: svg}}/>
-      <p>Scan to take this journey with you.</p>
-      <input ref={input} readOnly value={url} aria-label="Journey link" onFocus={event => event.target.select()}/>
-      <button className="button primary" onClick={copy}><Copy size={14} aria-hidden="true"/>{copied ? 'Link copied' : 'Copy link'}</button>
+  return <div className={`qr ${className}`.trim()} role="img" aria-label={label} dangerouslySetInnerHTML={{__html: svg}}/>;
+}
+
+// Bottom-right card: opens on hover or focus, a click pins it (touchscreens, a crowd scanning), Esc unpins.
+export function DemoQr({open}) {
+  const [pinned, setPinned] = useState(false);
+  const box = useRef(null);
+  useEffect(() => {
+    if (!pinned) return;
+    // A key press makes the focused tab match :focus-visible, which would keep the card open.
+    const onKey = event => {if (event.key === 'Escape') {setPinned(false); if (box.current.contains(document.activeElement)) document.activeElement.blur();}};
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [pinned]);
+  const shown = open || pinned;
+  return <aside className={`demo-qr${shown ? ' is-open' : ''}`} aria-label="Try the demo!" ref={box}>
+    <div className="demo-qr-card" id="demo-qr-card">
+      <Qr url={demoUrl} label="QR code for the Cornac Workbench"/>
+      <a href={demoUrl} target="_blank" rel="noreferrer">cornac-workbench.preferred.ai</a>
     </div>
-  </dialog>;
+    <button className="demo-qr-tab" aria-expanded={shown} aria-controls="demo-qr-card" onClick={() => setPinned(value => !value)}>
+      <QrCode size={16} aria-hidden="true"/>Try the demo!</button>
+  </aside>;
 }
 
 // Categorical slots 1-3 of the dataviz reference palette, validated on white; every bar also carries its value.

@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {ArrowRight, ChevronDown, Download, ExternalLink, Eye, ImageOff, RotateCcw} from 'lucide-react';
+import {ArrowRight, ChevronDown, ImageOff} from 'lucide-react';
 
 export const plainLabels = {
   one_popularity: 'One item per SID, most popular', one_cosine: 'One item per SID, most similar',
@@ -38,11 +38,6 @@ export function revealText(pair, sidRank, traditionalRank) {
   const [found, missed] = sidRank ? [pair.sid, pair.traditional] : [pair.traditional, pair.sid];
   return `${found} ranks the next purchase #${sidRank || traditionalRank}. ${missed} does not have it in its top 5.`;
 }
-const itemsText = diff => diff.newCount === diff.rows.length ? `all ${diff.rows.length} items changed`
-  : diff.newCount ? `${diff.newCount} of ${diff.rows.length} items changed` : diff.movedCount ? 'same items, new order' : `same ${diff.rows.length} items`;
-const codesText = codes => codes.same ? `same ${codes.total} SIDs` : codes.newCount ? count(codes.newCount, 'new SID') : 'same SIDs, new order';
-// The step-4 result line, from the traditional shelfDiff and the SID model's addressesDiff.
-const resultText = (pair, left, codes) => `${pair.traditional}: ${itemsText(left)}. ${pair.sid}: ${codesText(codes)}.`;
 
 export function Thumb({media, item, size, eager}) {
   const [failed, setFailed] = useState(false);
@@ -65,7 +60,7 @@ export function ProductCard({card, catalog, media, tone, phase, change, isTarget
         {status ? <span className="status-pill change-pill">{status === 'new' ? 'new' : `${change.from > change.rank ? 'up' : 'down'} from #${change.from}`}</span> : null}
         {ids ? <span className="id-pill">item {card.item}</span> : null}
         {ids && card.address ? <button className="sid-pill" title={card.address.join('·')} aria-label={card.address.length > 8 ? undefined : `SID ${card.address.join('·')}`} onClick={() => onInspect(card)}>
-          {card.address.length > 8 ? `${card.address.length}-part SID` : card.address.join('·')}
+          {card.address.length > 8 ? `${card.address.length}-token SID` : card.address.join('·')}
         </button> : card.address && phase !== 'hook' ? <button className="bucket-link" onClick={() => onInspect(card)}>
           SID #{card.sid_rank} · {count(card.bucket_size, 'item')} <span aria-hidden="true">↗</span>
         </button> : null}
@@ -94,47 +89,3 @@ export function HistoryStrip({history, depth, catalog, media, open, onToggle, st
     {collapsible && history.length > 6 ? <button className="button small strip-toggle" aria-expanded={open} onClick={onToggle}>{open ? 'Last 6' : `All ${history.length}`}<ChevronDown size={14} aria-hidden="true"/></button> : null}
   </div>;
 }
-
-function whyRight(sid, codes, right) {
-  if (codes.same) return right.newCount || right.movedCount ? `${sid} predicted the same ${codes.total} SIDs; the resolver chose different items from them.` : `${sid} predicted the same ${codes.total} SIDs, so its items did not change.`;
-  return codes.newCount ? `${sid} predicted ${count(codes.newCount, 'new SID')}.` : `${sid} predicted the same ${codes.total} SIDs in a new order.`;
-}
-export function ChangeLine({pair, left, right, codes, open, onToggle}) {
-  return <div className="change-line"><p>{resultText(pair, left, codes)}</p>
-    <button className="text-button" aria-expanded={open} onClick={onToggle}>Why?</button>
-    {open ? <div className="why"><p>{pair.traditional} re-ranks every item from the whole history.</p><p>{whyRight(pair.sid, codes, right)}</p></div> : null}
-  </div>;
-}
-
-export function SameCodeStep({probe, size, pair, catalog, media, picked, result, busy, onChoose}) {
-  const name = item => itemShort(media, catalog, item);
-  const other = probe.items.find(item => item !== picked);
-  return <section className="same-sid-step" data-testid="same-sid-step" aria-labelledby="same-sid-heading">
-    <h2 id="same-sid-heading">Two items, one SID</h2>
-    <div className="same-sid-pair">
-      {probe.items.map(item => <figure key={item} className={item === picked ? 'is-picked' : undefined}><Thumb media={media} item={item} size={72}/><figcaption>{name(item)}</figcaption></figure>)}
-      <span className="code-pill">SID {probe.address.join('·')} · {count(size, 'item')}</span>
-    </div>
-    {result ? <><p>{resultText(pair, result.left, result.codes)}</p>
-      <div className="same-sid-actions"><button className="button" disabled={busy} onClick={() => onChoose(other, true)}>Add {name(other)} instead</button></div></>
-      : <><p>Add either one. {pair.sid} predicts the same 5 SIDs after either item; {pair.traditional}'s top 5 differs between them.</p>
-      <div className="same-sid-actions">{probe.items.map(item => <button key={item} className="button" disabled={busy} onClick={() => onChoose(item)}>Add {name(item)}</button>)}</div></>}
-  </section>;
-}
-
-export function Recap({pair, picks, left, codes, rank, onAnother, onRestart, onSave}) {
-  return <section className="journey-recap" aria-labelledby="recap-heading"><h3 id="recap-heading">What happened</h3>
-    <p>Added {picks[0]}, then {picks[1]}.</p>
-    <p>{pair.traditional}: {left[0]}, then {left[1]} of 5 items changed.</p>
-    <p>{pair.sid}: {codes.every(step => step.same) ? `same ${codes[0].total} SIDs both times` : `${codesText(codes[0])}, then ${codesText(codes[1])}`}.</p>
-    {rank ? <p>Before you added items, {pair.sid} ranked the next purchase #{rank}.</p> : null}
-    <div className="recap-actions">
-      <button className="button" onClick={onAnother}>Another model</button>
-      <button className="button" onClick={onRestart}><RotateCcw size={14}/>Restart journey</button>
-      <button className="button" onClick={onSave}><Download size={14}/>Save journey</button>
-      <a className="button primary" href="https://github.com/PreferredAI/cornac" target="_blank" rel="noreferrer">Get Cornac<ExternalLink size={14} aria-hidden="true"/></a>
-    </div>
-  </section>;
-}
-
-export const DetailsToggle = ({on, onToggle}) => <button className={`button details-toggle${on ? ' active-btn' : ''}`} aria-pressed={on} onClick={onToggle}><Eye size={14} aria-hidden="true"/>Details</button>;

@@ -1,4 +1,5 @@
 import {chromium} from 'playwright';
+import QRCode from 'qrcode';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {mkdir, readdir, readFile, writeFile} from 'node:fs/promises';
@@ -16,7 +17,14 @@ const json = async name => JSON.parse(await readFile(new URL(`../public/journeys
 const state = (pair, id) => json(`${pair}/states/${id}.json`);
 const manifest = await json('manifest.json');
 const media = await json('media.json');
+const sids = await json('sids.json');
+const prefixes = await json('prefixes.json');
 const pair = manifest.pairs[0], seed = pair.seeds[0].id;
+// The public address the QR codes carry, also when the site runs locally.
+const demoUrl = 'https://cornac-workbench.preferred.ai/';
+const resolvers = {one_popularity:'One item per SID, most popular', one_cosine:'One item per SID, most similar',
+  expand_popularity:'All items per SID, most popular', expand_cosine:'All items per SID, most similar'};
+const lower = text => text.charAt(0).toLowerCase() + text.slice(1);
 const root = await state(pair.id, seed);
 const target = media.targets[seed];
 const short = item => media.items[String(item)].short;
@@ -54,10 +62,32 @@ function codesDiff(before, after) {
 async function scene(target, n) {
   await target.locator(`.tour[data-scene="${n}"] .tour-scene h1`).waitFor();
 }
-// Explore screen at a given progress label, with no request in flight.
-async function at(target, text) {
-  await target.getByText(text, {exact:true}).waitFor();
-  await target.locator('.journey-recommendations[aria-busy="false"]').waitFor();
+// The workbench showing `row` (and `history`, when given) with both input rows drawn, the score tiles filled and no
+// request in flight.
+async function bench(target, row = pair, history = null) {
+  await target.waitForFunction(([traditional, sid, history]) => document.querySelector('.wb .traditional-heading .model-name')?.textContent === traditional
+    && document.querySelector('.wb .semantic-heading .model-name')?.textContent === sid
+    && (!history || [...document.querySelectorAll('.wb .journey-timeline li[data-item]')].map(li => li.dataset.item).join() === history.join()), [row.traditional, row.sid, history]);
+  await target.locator('.wb .s4-shelves[aria-busy="false"] .semantic-heading div.s4-input').waitFor();
+  await target.waitForFunction(() => !document.querySelector('.journey-live')?.textContent.startsWith('Updating')
+    && [...document.querySelectorAll('.wb-tiles dd')].every(value => value.textContent !== '…'));
+}
+const select = (target, label) => target.locator(`.wb-settings select[aria-label="${label}"]`);
+// Switches the workbench to `row` with the two model selects, one at a time.
+async function pickPair(target, row) {
+  for (const [label, key, otherLabel, otherKey] of [['Sequential model', 'traditional', 'Generative SID model', 'sid'], ['Generative SID model', 'sid', 'Sequential model', 'traditional']]) {
+    if (await select(target, label).inputValue() === row[key]) continue;
+    const kept = await select(target, otherLabel).inputValue();
+    await select(target, label).selectOption(row[key]);
+    await bench(target, manifest.pairs.find(entry => entry[key] === row[key] && entry[otherKey] === kept));
+  }
+}
+const params = target => target.evaluate(() => Object.fromEntries(new URLSearchParams(location.hash.slice(1))));
+// A QR on screen encodes `text` when its modules are those qrcode draws for `text` with the page's settings.
+async function encodes(locator, text) {
+  const shown = await locator.locator('svg').evaluate(svg => [svg.getAttribute('viewBox'), svg.querySelector('path[stroke]').getAttribute('d')]);
+  const drawn = await QRCode.toString(text, {type:'svg', margin:1});
+  assert.deepEqual(shown, [drawn.match(/viewBox="([^"]+)"/)[1], drawn.match(/<path stroke="[^"]*" d="([^"]+)"/)[1]], text);
 }
 // Scene 4 after `depth` choices, with no request in flight (a choice made while busy is ignored).
 async function steered(target, depth) {
@@ -177,7 +207,7 @@ try {
       assert.equal(await fresh.evaluate(() => location.hash), `#p=${pair.id}&h=${other.id}&s=expand_popularity&v=tour&sc=1`);
       await fresh.getByRole('button', {name:'Next', exact:true}).click();
       await scene(fresh, 2);
-      assert.equal(await fresh.locator('h1').textContent(), 'SASRec and LETTER recommend from the same history.');
+      assert.equal(await fresh.locator('h1').textContent(), 'A sequential model and a generative SID model recommend from the same history.');
       assert.deepEqual(await items(fresh.getByTestId('tour-semantic-list').locator('li[data-item]')), ids(start.shelves.expand_popularity));
     } finally {await fresh.close();}
   });
@@ -185,7 +215,9 @@ try {
   await check('stepper: five steps, Next and Back', async () => {
     assert.deepEqual(await page.locator('.tour-steps button').allTextContents(), steps);
     assert.equal(await current(), 'Shopper');
-    assert.ok(await page.getByRole('button', {name:'Back', exact:true}).isDisabled());
+    // Step 1 offers Preliminaries where the later steps have Back.
+    assert.equal(await page.getByRole('button', {name:'Back', exact:true}).count(), 0);
+    assert.ok(await page.getByRole('button', {name:'Preliminaries', exact:true}).isVisible());
     await page.getByRole('button', {name:'Next', exact:true}).click();
     await scene(page, 2);
     assert.equal(await current(), 'Two recommenders');
@@ -193,6 +225,7 @@ try {
     assert.equal(await page.locator('.tour-steps li.is-reached').count(), 2);
     assert.equal(await page.evaluate(() => document.activeElement.tagName), 'H1');
     assert.match(await page.evaluate(() => location.hash), /&v=tour&sc=2$/);
+    assert.equal(await page.getByRole('button', {name:'Preliminaries', exact:true}).count(), 0);
     await page.getByRole('button', {name:'Back', exact:true}).click();
     await scene(page, 1);
     assert.equal(await current(), 'Shopper');
@@ -208,8 +241,254 @@ try {
     await page.locator('.tour-steps button', {hasText:'Two recommenders'}).click();
     await scene(page, 2);
   });
+  const basicsTitle = "Two ways to predict a user's next purchase";
+  await check('step 0: Preliminaries on step 1, arrow keys and the hash', async () => {
+    const view = await openAt('#v=tour&sc=1');
+    try {
+      await scene(view, 1);
+      const sides = view.locator('nav.tour-bar > .tour-bar-side');
+      // A text button, without an icon.
+      assert.deepEqual(await sides.first().locator('button').evaluateAll(list => list.map(button => [button.textContent, button.querySelectorAll('svg').length])), [['Preliminaries', 0]]);
+      await sides.first().getByRole('button', {name:'Preliminaries', exact:true}).click();
+      await scene(view, 0);
+      assert.match(await view.evaluate(() => location.hash), /&v=tour&sc=0$/);
+      assert.equal(await view.locator('.tour-scene h1').textContent(), basicsTitle);
+      assert.equal(await view.locator('section.tour-scene').getAttribute('aria-label'), 'Preliminaries');
+      assert.equal(await view.locator('p.tour-eyebrow').textContent(), 'Preliminaries');
+      assert.deepEqual(await view.evaluate(() => [document.activeElement.tagName, document.activeElement.textContent]), ['H1', basicsTitle]);
+      // The five dots stay, none current or reached; the left side of the bar is empty.
+      assert.deepEqual(await view.locator('.tour-steps button').allTextContents(), steps);
+      assert.equal(await view.locator('.tour-steps [aria-current]').count(), 0);
+      assert.equal(await view.locator('.tour-steps li.is-reached').count(), 0);
+      assert.equal(await sides.first().evaluate(side => side.childElementCount), 0);
+      assert.deepEqual(await sides.last().locator('button').allTextContents(), ['Next', 'Skip tour']);
+      // ← does nothing on step 0; → opens step 1 and ← comes back.
+      await view.keyboard.press('ArrowLeft');
+      await view.waitForTimeout(300);
+      assert.equal(await view.locator('.tour').getAttribute('data-scene'), '0');
+      await view.keyboard.press('ArrowRight');
+      await scene(view, 1);
+      assert.match(await view.evaluate(() => location.hash), /&v=tour&sc=1$/);
+      await view.keyboard.press('ArrowLeft');
+      await scene(view, 0);
+      await view.getByRole('button', {name:'Try it on a real history', exact:true}).click();
+      await scene(view, 1);
+      assert.equal(await view.locator('.tour-steps [aria-current="step"]').textContent(), 'Shopper');
+      assert.match(await view.evaluate(() => location.hash), /&v=tour&sc=1$/);
+    } finally {await view.close();}
+    // `sc=0` opens step 0 on load and after a reload; without `sc` the tour opens on step 1.
+    const direct = await openAt('#v=tour&sc=0');
+    try {
+      await scene(direct, 0);
+      await direct.reload();
+      await scene(direct, 0);
+      assert.equal(await direct.locator('p.tour-eyebrow').textContent(), 'Preliminaries');
+    } finally {await direct.close();}
+    const plain = await openAt('#v=tour');
+    try {
+      await scene(plain, 1);
+      assert.equal(await plain.locator('p.tour-eyebrow').textContent(), 'Step 1 of 5');
+    } finally {await plain.close();}
+  });
+  // Step 0's TIGER side from the data, whatever the pair. The example is a history item whose TIGER SID is not the
+  // generated one and whose first-token group has at least 8 items, by the share of the group's top category, then
+  // group size, then later in the history (otherwise the last item). Each prefix panel lists the example, then the
+  // group's members by index without the next purchase and the items on the pair's root lists.
+  const ahead = (key, other) => {const k = key.findIndex((value, n) => value !== other[n]); return k >= 0 && key[k] > other[k];};
+  const groups = prefixes.prefixes.TIGER;
+  const percent = value => `${Math.round(value * 100)}%`;
+  const statsLine = `Across TIGER's SIDs for all ${prefixes.stats.items.toLocaleString()} items, two items that share the first token are in the same top-level category ${
+    percent(prefixes.stats.first_token_same_top)} of the time; two random items, ${percent(prefixes.stats.random_same_top)}.`;
+  async function basicsOf(row, history) {
+    const tiger = manifest.pairs.find(entry => entry.sid === 'TIGER' && entry.traditional === row.traditional);
+    const generated = (await state(tiger.id, history)).buckets[0].address;
+    const start = await state(row.id, history), table = sids.sids.TIGER;
+    let best = null;
+    start.history.forEach((item, i) => {
+      const sid = table[String(item)], group = groups[String(sid[0])];
+      if (group.size < 8 || sid.join() === generated.join()) return;
+      const key = [group.top[0][1] / group.size, group.size, i];
+      if (!best || ahead(key, best.key)) best = {item, key};
+    });
+    const item = best ? best.item : start.history.at(-1), sid = table[String(item)];
+    const hidden = new Set([media.targets[history], ...[...start.traditional, ...Object.values(start.shelves).flat()].map(card => card.item)]);
+    const keys = [1, 2, 3].map(k => sid.slice(0, k));
+    const name = labeler(start, keys.flatMap(prefix => groups[prefix.join(',')].members));
+    const rows = keys.map(prefix => {
+      const key = prefix.join(','), {size, top:[[category, inTop]], members} = groups[key];
+      const shown = [item, ...members.filter(member => member !== item && !hidden.has(member))];
+      return {key, cells:[key, prefix.join('·'), count(size, 'item'), `${inTop === size ? 'All' : percent(inTop / size)} ${category.toLowerCase()}`],
+        items:shown.map(member => [member, titles[String(member)], name(member), member === item ? 'This item' : null]),
+        more:size > shown.length ? `+ ${count(size - shown.length, 'more item')}` : null, dropped:members.filter(member => member !== item && hidden.has(member))};
+    });
+    return {start, item, sid, generated, rows};
+  }
+  // Step 0 as shown, panel by panel.
+  const basics = target => target.evaluate(() => {
+    const all = (root, selector) => [...root.querySelectorAll(selector)];
+    const texts = (root, selector) => all(root, selector).map(element => element.textContent);
+    const chips = list => all(list, ':scope > li').map(chip => [chip.textContent, chip.className]);
+    const [task, sequential, sid, prefix] = all(document, 'div.s0 > section.s0-panel');
+    const example = sid.querySelector('div.s0-example');
+    return {
+      panels:all(document, 'div.s0 > section').map(panel => panel.className),
+      heads:[task, sequential, sid, prefix].map(panel => panel.querySelector('h2').textContent),
+      tags:[sequential, sid].map(panel => [...panel.querySelectorAll('.tour-column-head > *')].map(element => `${element.tagName} ${element.className} ${element.textContent}`)),
+      sequence:all(task, 'ol.s0-sequence > li').map(li => [li.className, li.dataset.item ? Number(li.dataset.item) : null, li.textContent, li.title, li.querySelectorAll('img.thumb').length]),
+      lines:[task, sequential, sid, prefix].map(panel => texts(panel, ':scope > p.s0-line')),
+      // Each numbered step: its text and the first class of each part.
+      steps:[sequential, sid].map(panel => all(panel, ':scope > ol.s0-steps > li').map(li => [li.querySelector(':scope > p.s0-step').textContent, [...li.children].map(child => child.classList[0])])),
+      ids:all(sequential, 'ol.s0-ids > li').map(li => [Number(li.dataset.item), li.textContent]),
+      scores:all(sequential, 'ol.s0-scores > li').map(li => [li.textContent, li.querySelector('i').getBoundingClientRect().width]),
+      more:sequential.querySelector('p.s0-scores-more').textContent,
+      example:[Number(example.dataset.item), example.title, example.querySelectorAll('img.thumb').length, example.querySelector('p').textContent,
+        example.querySelector('ol.s0-tokens').title, chips(example.querySelector('ol.s0-tokens')), example.querySelector('p.s0-caption').textContent],
+      sids:all(sid, 'ol.s0-sids > li').map(li => [Number(li.dataset.item), li.textContent]),
+      generate:[sid.querySelector('div.s0-generate').className, chips(sid.querySelector('div.s0-generate > ol.s0-tokens'))],
+      delays:all(sid, 'div.s0-generate li.s0-token').map(chip => parseFloat(getComputedStyle(chip).animationDelay)),
+      rows:all(prefix, ':scope > ol.s0-prefix-rows > li').map(li => [li.className, li.dataset.prefix, li.querySelector('code.s0-prefix-pill').textContent,
+        li.querySelector('div.s0-prefix-about > span.s0-prefix-size').textContent, li.querySelector('div.s0-prefix-about > span.s0-prefix-top').textContent,
+        ...(button => [button.textContent, button.getAttribute('aria-expanded'), button.getAttribute('aria-controls')])(li.querySelector('button.s0-show'))]),
+      open:all(prefix, '.s0-prefix-items').map(panel => panel.id),
+      tops:[sequential, sid].map(panel => Math.round(panel.getBoundingClientRect().top)),
+      go:[...document.querySelectorAll('.tour-scene button.s0-go')].map(button => `${button.className} ${button.textContent}`),
+      gone:document.querySelectorAll('div.s0-prefix, ul.s0-members, p.s0-similar, .is-shared, p.s0-label, ul.s0-examples').length,
+    };
+  });
+  // An open prefix panel: its items as [item, title, name, `This item`] and its `+ n more items` line.
+  const prefixPanel = (target, key) => target.locator(`li.s0-prefix-row[data-prefix="${key}"] > div.s0-prefix-items`).evaluate(panel => ({
+    items:[...panel.querySelectorAll(':scope > ul > li[data-item]')].map(li => [Number(li.dataset.item), li.title, li.querySelector('p').textContent,
+      li.classList.contains('is-example') ? li.querySelector('span.s0-this')?.textContent ?? 'no label' : li.querySelector('span.s0-this') ? 'stray label' : null]),
+    more:panel.querySelector(':scope > p.s0-prefix-more')?.textContent ?? null}));
+  // Open step 0 and wait for the TIGER side and the generated SID to be drawn.
+  async function openBasics(hash, options) {
+    const view = await openAt(hash, options);
+    await scene(view, 0);
+    await view.locator('.s0-sid div.s0-example').waitFor();
+    await view.locator('.s0-generate').scrollIntoViewIfNeeded();
+    await view.locator('.s0-generate.is-on li.s0-token').first().waitFor();
+    return view;
+  }
+  await check('step 0: two pipelines and TIGER\'s prefix rows, recounted from the data', async () => {
+    // Every history on the default pair, plus pairs with another SID model or sequential model.
+    const cases = [...pair.seeds.map(entry => [pair.id, entry.id]), ['sasrec-rpg', seed], ['bert-mlm-diffgrm', pair.seeds[2].id]];
+    const seen = {};
+    for (const [id, history] of cases) {
+      const row = manifest.pairs.find(entry => entry.id === id), want = await basicsOf(row, history), {start} = want;
+      const where = `${id} ${history}`, last3 = start.history.slice(-3), earlier = start.history.length - 3;
+      const view = await openBasics(`#p=${id}&h=${history}&v=tour&sc=0`);
+      try {
+        const shown = await basics(view);
+        assert.equal(await view.locator('.tour-scene h1').textContent(), basicsTitle);
+        assert.deepEqual(shown.panels, ['s0-panel s0-task', 's0-panel s0-sequential', 's0-panel s0-sid', 's0-panel s0-prefix'], where);
+        assert.deepEqual(shown.heads, ['Next-item recommendation', 'Sequential model', 'Generative SID model', 'Similar items share the first tokens'], where);
+        assert.deepEqual(shown.tags, [['H2  Sequential model', `SPAN model-name traditional ${row.traditional}`], ['H2  Generative SID model', 'SPAN model-name semantic TIGER']], where);
+        assert.deepEqual(shown.lines, [["It reads one user's purchases in order and ranks the items the user is likely to buy next."], ['Reads each purchase as its item ID.'],
+          ['Translates each item into a few semantic tokens, from general to specific: its Semantic ID (SID).'], [statsLine]], where);
+        // Row 1: `{n} earlier`, the last three photos numbered by position, then the `?` tile.
+        assert.deepEqual(shown.sequence, [['s0-more', null, `${earlier} earlier`, '', 0],
+          ...last3.map((item, i) => ['s0-photo', item, String(earlier + i + 1), titles[String(item)], 1]), ['s0-next', null, '?next', '', 0]], where);
+        // Row 2: the two numbered pipelines.
+        assert.deepEqual(shown.steps, [
+          [['Reads the item IDs', ['s0-step', 's0-ids']], ['Scores all 12,068 items', ['s0-step', 's0-scores', 's0-scores-more']], ['Recommends the 5 highest scores', ['s0-step']]],
+          [["Translates the item's text into an SID", ['s0-step', 's0-example']], ['Reads the history as SIDs', ['s0-step', 's0-sids']],
+            ['Generates the next SID one token at a time', ['s0-step', 's0-generate']], ['Looks up the item with that SID', ['s0-step']]]], where);
+        assert.deepEqual(shown.ids, last3.map(item => [item, String(item)]), where);
+        assert.deepEqual(shown.scores.map(([text]) => text), ['#1', '#2', '#3', '#4', '#5']);
+        assert.ok(shown.scores.every(([, width], i) => !i || width < shown.scores[i - 1][1]), JSON.stringify(shown.scores));
+        assert.equal(shown.more, '… 12,063 more');
+        assert.deepEqual(shown.example, [want.item, titles[String(want.item)], 1, short(want.item), want.sid.join('·'),
+          want.sid.map(token => [String(token), 's0-token']), 'general → specific'], where);
+        assert.deepEqual(shown.sids, last3.map(item => [item, sids.sids.TIGER[String(item)].join('·')]), where);
+        assert.deepEqual(shown.generate, ['s0-generate is-on', want.generated.map(token => [String(token), 's0-token'])], where);
+        assert.ok(shown.delays.every((delay, i) => !i || Math.abs(delay - shown.delays[i - 1] - .45) < .01), `${where} ${shown.delays}`);
+        // Row 3: one row per prefix of the example's SID, none open.
+        assert.deepEqual(shown.rows, want.rows.map(({key, cells}) => ['s0-prefix-row', ...cells, 'Show items', 'false', null]), where);
+        assert.deepEqual(shown.open, [], where);
+        assert.deepEqual(shown.go, ['button primary s0-go Try it on a real history']);
+        assert.equal(shown.gone, 0, where);
+        assert.equal(shown.tops[0], shown.tops[1], where);
+        // Show items opens one panel at a time; a second click closes it.
+        const buttons = view.locator('ol.s0-prefix-rows > li > button.s0-show');
+        for (const [i, {key, items: listed, more}] of want.rows.entries()) {
+          await buttons.nth(i).click();
+          await view.locator(`li.s0-prefix-row[data-prefix="${key}"] > div.s0-prefix-items`).waitFor();
+          const now = await basics(view);
+          assert.deepEqual(now.open, [`s0-prefix-${key}`], `${where} ${key}`);
+          assert.deepEqual(now.rows.map(entry => [entry[0], entry[6], entry[7]]), want.rows.map((other, j) =>
+            [`s0-prefix-row${i === j ? ' is-open' : ''}`, String(i === j), i === j ? `s0-prefix-${key}` : null]), `${where} ${key}`);
+          assert.deepEqual(await prefixPanel(view, key), {items:listed, more}, `${where} ${key}`);
+          seen[`${id} ${history} ${key}`] = await prefixPanel(view, key);
+        }
+        await buttons.nth(want.rows.length - 1).click();
+        await view.locator('.s0-prefix-items').waitFor({state:'detached'});
+        assert.equal(await view.locator('li.s0-prefix-row.is-open').count(), 0);
+        seen[where] = {shown, want};
+        if (id === pair.id && history === seed) {
+          // Under reduced motion the tokens stand still and stay readable.
+          await view.emulateMedia({reducedMotion:'reduce'});
+          const still = await view.locator('div.s0-generate li.s0-token').evaluateAll(chips => chips.map(chip => [getComputedStyle(chip).animationName, getComputedStyle(chip).color]));
+          assert.ok(still.every(([name, color]) => name === 'none' && color !== 'rgba(0, 0, 0, 0)'), JSON.stringify(still));
+        }
+      } finally {await view.close();}
+    }
+    // The values the round-8c notes record, as a cross-check of the recount.
+    assert.equal(statsLine, "Across TIGER's SIDs for all 12,068 items, two items that share the first token are in the same top-level category 84% of the time; two random items, 23%.");
+    const at = (history, id = pair.id) => seen[`${id} ${history}`];
+    assert.deepEqual([at(seed).shown.example[0], at(seed).shown.rows.map(entry => entry.slice(2, 5)), at(seed).shown.generate[1].map(([text]) => text).join('·')],
+      [1052, [['116', '117 items', '99% mascara'], ['116·163', '6 items', 'All mascara'], ['116·163·184', '5 items', 'All mascara']], '5·104·60·0']);
+    assert.equal(at(seed).shown.example[3], 'Maybelline mascara');
+    // 1052 reads its short name in the pipeline and its full title in the panels.
+    assert.deepEqual(at(`${seed} 116`).items[0], [1052, titles['1052'], titles['1052'].charAt(0).toUpperCase() + titles['1052'].slice(1), 'This item']);
+    const [skin, fragrance] = ['Skin care, 8 purchases', 'Fragrance, 11 purchases'].map(label => pair.seeds.find(row => row.label === label).id);
+    for (const [history, left] of [[skin, [704, 2752]], [fragrance, [357, 1895, 2539]]]) {
+      assert.deepEqual([...new Set(at(history).want.rows.flatMap(entry => entry.dropped))].sort((a, b) => a - b), left, history);
+      const listed = Object.entries(seen).filter(([key]) => key.startsWith(`${pair.id} ${history} `)).flatMap(([, panel]) => panel.items.map(([item]) => item));
+      assert.deepEqual(listed.filter(item => left.includes(item)), [], history);
+    }
+    // On another SID model the TIGER side is the same.
+    const rpg = at(seed, 'sasrec-rpg').shown, letter = at(seed).shown;
+    assert.deepEqual([rpg.tags[1], rpg.example, rpg.sids, rpg.generate, rpg.rows], [letter.tags[1], letter.example, letter.sids, letter.generate, letter.rows]);
+  });
+  await check('step 0: no spoiler; photos from the history and the prefix panels only', async () => {
+    for (const entry of pair.seeds) {
+      const view = await openAt(`#h=${entry.id}&v=tour&sc=1`);
+      try {
+        await view.locator('.tour-pick').first().waitFor();
+        // Step 1's guess cards hold the next purchase and items from the lists that the user did not buy.
+        const picks = await view.locator('.tour-pick').evaluateAll(cards => cards.map(card => [Number(card.dataset.item), card.querySelector('.tour-pick-name').textContent, card.title]));
+        await view.getByRole('button', {name:'Preliminaries', exact:true}).click();
+        await scene(view, 0);
+        await view.locator('.s0-sid div.s0-example').waitFor();
+        const start = await state(pair.id, entry.id), next = media.targets[entry.id];
+        assert.ok(picks.some(([item]) => item === next) && !start.history.includes(next), entry.label);
+        // Closed, step 0 shows history items only: photos, item IDs, the example and its SID cells.
+        const fromHistory = await items(view.locator('.tour-scene [data-item]'));
+        assert.equal(fromHistory.length, 3 + 3 + 1 + 3, entry.label);
+        assert.deepEqual(fromHistory.filter(item => !start.history.includes(item)), [], entry.label);
+        // No guess card's name or title appears.
+        const text = await view.locator('.tour-scene').textContent();
+        for (const [item, name] of picks) assert.ok(!text.includes(name), `${entry.label}: ${item} ${name}`);
+        // Each prefix panel adds the example and catalog items, never the next purchase, a guess card or a list item.
+        const listed = [...start.traditional, ...Object.values(start.shelves).flat()].map(card => card.item);
+        const example = Number(await view.locator('.s0-sid div.s0-example').getAttribute('data-item'));
+        const buttons = view.locator('ol.s0-prefix-rows > li > button.s0-show');
+        for (let i = 0; i < await buttons.count(); i++) {
+          await buttons.nth(i).click();
+          const panel = view.locator('li.s0-prefix-row.is-open > div.s0-prefix-items');
+          await panel.waitFor();
+          const members = await items(panel.locator('li[data-item]'));
+          assert.equal(members[0], example, entry.label);
+          assert.deepEqual(members.slice(1).filter(item => item === next || listed.includes(item) || picks.some(([pick]) => pick === item)), [], entry.label);
+          const shownTitles = await view.locator('.tour-scene [title]').evaluateAll(list => list.map(element => element.title));
+          for (const [item, , title] of picks) assert.ok(!shownTitles.includes(title), `${entry.label}: ${item}`);
+        }
+        assert.equal(await view.getByText('Next purchase', {exact:true}).count(), 0);
+      } finally {await view.close();}
+    }
+  });
   await check('scene 2: two lists of five, the next purchase on the SID side', async () => {
-    assert.equal(await page.locator('h1').textContent(), 'SASRec and LETTER recommend from the same history.');
+    assert.equal(await page.locator('h1').textContent(), 'A sequential model and a generative SID model recommend from the same history.');
     assert.equal(await page.locator('.tour-reveal').textContent(), 'LETTER ranks the next purchase #1. SASRec does not have it in its top 5.');
     const left = page.getByTestId('tour-traditional-list'), right = page.getByTestId('tour-semantic-list');
     assert.deepEqual(await items(left.locator('li[data-item]')), ids(root.traditional));
@@ -234,7 +513,7 @@ try {
     try {
       await scene(rpg, 2);
       const start = await state('sasrec-rpg', seed);
-      assert.deepEqual(await rpg.locator('.tour-code').allTextContents(), Array(5).fill('32-part SID'));
+      assert.deepEqual(await rpg.locator('.tour-code').allTextContents(), Array(5).fill('32-token SID'));
       assert.deepEqual(await rpg.locator('.tour-code').evaluateAll(pills => pills.map(element => element.title)), start.shelves.one_cosine.map(card => card.address.join('·')));
       assert.deepEqual(await rpg.locator('.tour-id').allTextContents(), start.traditional.map(card => `item ${card.item}`));
       assert.equal(await rpg.locator('.tour-column-line').last().textContent(), 'Generates 5 Semantic IDs (SIDs), short token sequences computed from item text. Each of these SIDs belongs to one item.');
@@ -418,7 +697,7 @@ try {
       assert.equal(await rpg.getByRole('radiogroup').count(), 0);
       assert.equal(await rpg.locator('.s3-controls').count(), 0);
       assert.deepEqual(await rpg.locator('.s3-row').evaluateAll(rows => rows.map(entry => entry.dataset.code)), start.buckets.map(entry => entry.address.join(',')));
-      assert.deepEqual(await rpg.locator('.s3-row code.s3-pill').allTextContents(), Array(5).fill('32-part SID'));
+      assert.deepEqual(await rpg.locator('.s3-row code.s3-pill').allTextContents(), Array(5).fill('32-token SID'));
       assert.deepEqual(await rpg.locator('.s3-row code.s3-pill').evaluateAll(pills => pills.map(element => element.title)), start.buckets.map(entry => entry.address.join('·')));
       assert.deepEqual(await rpg.locator('.s3-row .s3-size').allTextContents(), Array(5).fill('1 item'));
       for (const k of [1, 2, 3, 4, 5]) assert.deepEqual(await takes(rpg, k), fromCode(start.shelves.one_cosine, k), `row ${k}`);
@@ -465,7 +744,7 @@ try {
     assert.equal(diffgrm.buckets[0].size, 1);
     assert.deepEqual(expected(pair, root, seed), opening);
   });
-  await check('one name per item in steps 1-4', async () => {
+  await check('one name per item in steps 1-4 and the workbench', async () => {
     // History item 1294 and the next purchase 2739 share a short name, so both show their full titles everywhere in the tour.
     assert.equal(short(2739), short(1294));
     const want = {2739:'Real Techniques Fine Liner Brush', 1294:'Real Techniques Expert Face Brush'};
@@ -496,19 +775,19 @@ try {
       await view.getByRole('button', {name:'Choose items to add', exact:true}).click();
       await read('step 4 list', '[data-testid="sid-shelf"] article[data-item="2739"] h3');
       await read('step 4 strip', '.s4 .journey-timeline li[data-item="1294"] p');
-      assert.deepEqual(seen.filter(([, item, text]) => text !== want[item]), []);
-      assert.equal(seen.length, 8);
-      // Explore keeps the short names.
+      // The workbench names items as the tour does.
       await view.getByRole('button', {name:'Skip tour', exact:true}).click();
-      await at(view, 'Choice 1 of 2');
-      assert.equal(await view.locator('.journey-timeline li[data-item="1294"] p').textContent(), short(1294));
+      await bench(view);
+      await read('workbench list', '.wb [data-testid="sid-shelf"] article[data-item="2739"] h3');
+      await read('workbench strip', '.wb .journey-timeline li[data-item="1294"] p');
+      assert.deepEqual(seen.filter(([, item, text]) => text !== want[item]), []);
+      assert.equal(seen.length, 10);
     } finally {await view.close();}
   });
   let choiceMs;
   const [first] = ids(root.traditional);
   const next = await state(pair.id, root.next[String(first)]);
-  const sids = await json('sids.json');
-  const sidText = address => address.length > 8 ? `${address.length}-part SID` : address.join('·');
+  const sidText = address => address.length > 8 ? `${address.length}-token SID` : address.join('·');
   // Two items with one SID: the manifest's probe on its history, otherwise the two lowest items of the first SID
   // (by rank) with at least two items on the root's lists that have next states.
   function samePair(row, history, start) {
@@ -669,7 +948,7 @@ try {
     try {
       await scene(rpg, 4);
       const start = await state('sasrec-rpg', seed);
-      assert.deepEqual(await rpg.getByTestId('sid-shelf').locator('button.sid-pill').allTextContents(), Array(5).fill('32-part SID'));
+      assert.deepEqual(await rpg.getByTestId('sid-shelf').locator('button.sid-pill').allTextContents(), Array(5).fill('32-token SID'));
       assert.deepEqual(await rpg.getByTestId('sid-shelf').locator('button.sid-pill').evaluateAll(list => list.map(button => button.title)), start.shelves.one_cosine.map(card => card.address.join('·')));
     } finally {await rpg.close();}
   });
@@ -679,21 +958,14 @@ try {
     assert.equal(await page.locator('details.full-name').count(), 0);
     assert.equal(await page.getByText('Full name').count(), 0);
     const titled = await page.locator('.s4-shelves article[data-item]').evaluateAll(cards => cards.map(card => [Number(card.dataset.item), card.title]));
-    // Explore keeps the All/Last 6 toggle and the Full name expanders, which name the same items.
+    assert.deepEqual(titled, [...ids(root.traditional), ...ids(root.shelves.one_cosine)].map(item => [item, titles[String(item)]]));
+    // The workbench shows the same cards, titles and whole history, also without a toggle or expanders.
     const view = await openAt('#v=explore');
     try {
-      await at(view, 'Choice 1 of 2');
-      const shown = () => view.locator('.journey-timeline li[data-item]:not([hidden])').count();
-      assert.equal(await shown(), 6);
-      await view.getByRole('button', {name:`All ${root.history.length}`, exact:true}).click();
-      assert.equal(await shown(), root.history.length);
-      await view.getByRole('button', {name:'Last 6', exact:true}).click();
-      assert.equal(await shown(), 6);
-      assert.equal(await view.locator('article[data-item] details.full-name').count(), 10);
-      assert.equal(await view.locator('article[data-item][title]').count(), 0);
-      const named = await view.locator('article[data-item]').evaluateAll(cards => cards.map(card => [Number(card.dataset.item), card.querySelector('.full-name p').textContent]));
-      assert.deepEqual(titled, named);
-      assert.deepEqual(titled.map(([item]) => item), [...ids(root.traditional), ...ids(root.shelves.one_cosine)]);
+      await bench(view);
+      assert.equal(await view.locator('.wb .journey-timeline li[data-item]:not([hidden])').count(), root.history.length);
+      assert.equal(await view.locator('.strip-toggle, details.full-name').count(), 0);
+      assert.deepEqual(await view.locator('.wb .s4-shelves article[data-item]').evaluateAll(cards => cards.map(card => [Number(card.dataset.item), card.title])), titled);
     } finally {await view.close();}
   });
   await check('scene 4: repeated short names show the full title', async () => {
@@ -796,8 +1068,6 @@ try {
     assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(root.traditional));
     assert.equal(await page.locator('.s4-change').textContent(), '');
   });
-  const probe = pair.same_bucket_probe;
-  const swapped = await state(pair.id, root.next[String(probe.items[1])]);
   await check('scene 4: two items with one SID for every LETTER and DiffGRM pair and history', async () => {
     // Pairs and the sequential model's overlap k per history (145, 210, 2574, 21060, 21667, 8564).
     const pairs = {LETTER:[[88, 610], [88, 610], [88, 610], [88, 610], [88, 610], [88, 168]],
@@ -830,6 +1100,13 @@ try {
   });
   const [second] = ids(next.shelves.one_cosine);
   const last = await state(pair.id, next.next[String(second)]);
+  // The recap after those two Adds, for the workbench checks.
+  const recap = (() => {
+    const [x, y] = [[root, next], [next, last]].map(([a, b]) => shelfDiff(ids(a.traditional), ids(b.traditional)).newCount);
+    const [one, two] = [codesDiff(root, next), codesDiff(next, last)].map(sidsPhrase);
+    const names = [first, second].map(labeler(root, [...last.history, ...ids(last.traditional), ...ids(last.shelves.one_cosine)]));
+    return `Added ${names[0]}, then ${names[1]}. SASRec: ${x}, then ${y} of 5 items changed. LETTER: ${one === two ? `${one} both times` : `${one}, then ${two}`}.`;
+  })();
   await check('scene 4: two Adds give the recap and ten final suggestions', async () => {
     await choose(page, 'traditional-shelf');
     await steered(page, 1);
@@ -949,7 +1226,7 @@ try {
   });
   await check('scene 5: Install Cornac copies the install line and links the repository', async () => {
     const get = page.locator('section.s5-get');
-    assert.equal(await get.locator('h2').textContent(), 'Install Cornac');
+    assert.deepEqual(await get.locator('h2').allTextContents(), ['Install Cornac', 'Try the demo!']);
     assert.equal(await get.locator('code.s5-pip').textContent(), 'pip install cornac');
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], {origin:new URL(url).origin});
     await get.getByRole('button', {name:'Copy', exact:true}).click();
@@ -959,42 +1236,63 @@ try {
     assert.equal(await get.locator('a.s5-repo').getAttribute('href'), 'https://github.com/PreferredAI/cornac');
     await get.locator('.s5-qr svg').waitFor();
     assert.equal(await get.locator('.s5-qr').getAttribute('aria-label'), 'QR code for the Cornac repository on GitHub');
+    await encodes(get.locator('.s5-qr'), 'https://github.com/PreferredAI/cornac');
+  });
+  await check('scene 5: Try the demo! next to Install Cornac', async () => {
+    const get = page.locator('section.s5-get');
+    assert.equal(await get.getAttribute('aria-labelledby'), null);
+    const parts = get.locator(':scope > div.s5-get-part');
+    assert.deepEqual(await parts.evaluateAll(list => list.map(part => part.className)), ['s5-get-part', 's5-get-part s5-phone']);
+    const phone = parts.nth(1);
+    assert.equal(await phone.locator('h2').textContent(), 'Try the demo!');
+    const link = phone.locator('a.s5-demo');
+    assert.deepEqual([await link.textContent(), await link.getAttribute('href')], ['cornac-workbench.preferred.ai', demoUrl]);
+    const qr = phone.locator('div.qr.s5-demo-qr');
+    assert.deepEqual([await qr.getAttribute('role'), await qr.getAttribute('aria-label')], ['img', 'QR code for the Cornac Workbench']);
+    await qr.locator('svg').waitFor();
+    await encodes(qr, demoUrl);
+    // The repository's link and QR stay unique on the page.
+    assert.deepEqual([await page.locator('a.s5-repo').count(), await page.locator('.s5-qr').count()], [1, 1]);
+    // Side by side here, stacked on a phone.
+    const blocks = target => target.locator('section.s5-get > div.s5-get-part').evaluateAll(list => list.map(part => {const {top, bottom, left, right} = part.getBoundingClientRect(); return {top, bottom, left, right};}));
+    const [install, demo] = await blocks(page);
+    assert.ok(Math.abs(install.top - demo.top) <= 1 && demo.left >= install.right, JSON.stringify({install, demo}));
+    const small = await openAt('#v=tour&sc=5', {viewport:{width:390, height:844}});
+    try {
+      await scene(small, 5);
+      await small.locator('.s5-demo-qr svg').waitFor();
+      const [above, below] = await blocks(small);
+      assert.ok(below.top >= above.bottom, JSON.stringify({above, below}));
+    } finally {await small.close();}
   });
   const action = name => page.locator(`section.s5-more button[data-action="${name}"]`);
   await check('scene 5: two buttons, no Share', async () => {
     assert.equal(await page.locator('section.s5-more h2').count(), 0);
     assert.deepEqual(await page.locator('section.s5-more button[data-action]').evaluateAll(buttons => buttons.map(button =>
       [button.dataset.action, button.textContent, document.getElementById(button.getAttribute('aria-describedby')).textContent])), [
-      ['explore', 'Open the full workbench', 'All 8 model pairs, 6 histories and 4 resolvers, with save and replay.'],
+      ['explore', 'Open the full workbench', 'All 8 model pairs, 6 histories and 4 resolvers.'],
       ['restart', 'Start over', 'Back to step 1.']]);
     assert.equal(await page.getByRole('button', {name:/Share/}).count(), 0);
   });
   const bare = new URL('/', url).href;
-  await check('Open the full workbench, then Start over', async () => {
+  const heading = 'Compare any two models on any history.';
+  const focused = target => target.evaluate(() => [document.activeElement.tagName, document.activeElement.textContent]);
+  await check('Open the full workbench keeps the journey in its address; Back; Start over', async () => {
     await action('explore').click();
-    await at(page, 'Journey complete');
+    await bench(page, pair, last.history);
     assert.equal(await page.locator('.tour').count(), 0);
     assert.match(await page.evaluate(() => location.hash), /&v=explore$/);
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'recommendations-heading');
+    assert.deepEqual(await focused(page), ['H1', heading]);
+    // The two Adds from step 4 carry over: recap, ten final suggestions and no reveal line.
+    assert.equal(await page.locator('.wb .s4-bar .tour-takeaway').textContent(), recap);
     assert.equal(await page.getByRole('button', {name:/^Final suggestion: /}).count(), 10);
-    assert.equal(await page.locator('.journey-recap').getByRole('button', {name:'Restart journey', exact:true}).count(), 1);
-    const [x, y] = [[root, next], [next, last]].map(([a, b]) => shelfDiff(ids(a.traditional), ids(b.traditional)).newCount);
-    const codes = [codesDiff(root, next), codesDiff(next, last)];
-    assert.deepEqual(await page.locator('.journey-recap p').allTextContents(), [`Added ${short(first)}, then ${short(second)}.`,
-      `SASRec: ${x}, then ${y} of 5 items changed.`, `LETTER: ${codes.every(entry => entry.same) ? 'same 5 SIDs both times' : codes.map(sidsPhrase).join(', then ')}.`,
-      'Before you added items, LETTER ranked the next purchase #1.']);
-    // Share moved off step 5; explore keeps it.
-    await page.getByRole('button', {name:'Share', exact:true}).click();
-    const dialog = page.getByRole('dialog');
-    await dialog.locator('.share-qr svg').waitFor();
-    const link = await page.evaluate(() => location.href);
-    assert.match(link, /#p=sasrec-letter&h=\w+&s=one_cosine&t=\w+,\w+&r=1&v=explore$/);
-    assert.equal(await dialog.locator('input[readonly]').inputValue(), link);
-    assert.ok(await dialog.getByRole('button', {name:'Copy link', exact:true}).isVisible());
-    await page.keyboard.press('Escape');
-    await dialog.waitFor({state:'detached'});
+    assert.equal(await page.locator('.wb .choose-product:not(:disabled)').count(), 0);
+    assert.equal(await page.locator('p.wb-reveal').count(), 0);
+    // The address records the journey: pair, history, resolver, the two added items and the view.
+    assert.match(await page.evaluate(() => location.hash), new RegExp(`^#p=sasrec-letter&h=${seed}&s=one_cosine&t=${root.next[String(first)]},${next.next[String(second)]}&r=1&v=explore$`));
     await page.getByRole('button', {name:'Back to the tour', exact:true}).click();
     await scene(page, 5);
+    assert.match(await page.evaluate(() => location.hash), /&v=tour&sc=5$/);
     await Promise.all([page.waitForEvent('load'), action('restart').click()]);
     await scene(page, 1);
     assert.equal(await page.evaluate(() => location.href), bare);
@@ -1046,7 +1344,7 @@ try {
       assert.equal(await fresh.locator('h1').textContent(), `One user's purchase history: ${root.history.length} items from Amazon Beauty.`);
       assert.deepEqual(await items(fresh.locator('.tour-photos li[data-item]')), root.history);
       await fresh.getByRole('button', {name:'Skip tour', exact:true}).click();
-      await at(fresh, 'Choice 1 of 2');
+      await bench(fresh);
       assert.match(await fresh.evaluate(() => location.hash), new RegExp(`^#p=sasrec-letter&h=${seed}&s=one_cosine&v=explore$`));
       assert.equal(await header.getByRole('button', {name:'Start over', exact:true}).count(), 1);
       await Promise.all([fresh.waitForEvent('load'), brand.click()]);
@@ -1061,30 +1359,143 @@ try {
       assert.equal(await kiosk.evaluate(() => location.href), new URL('/#k=1', url).href);
     } finally {await kiosk.close();}
   });
-  await check('footnote: pre-computed from step 4 on and in explore', async () => {
-    const fresh = await openAt('#v=tour&sc=1');
+  // Whether the bottom-right demo card is showing; it hides with `visibility`.
+  const cardShown = target => target.locator('aside.demo-qr > div.demo-qr-card').evaluate(card => getComputedStyle(card).visibility === 'visible');
+  const cardIs = (target, open) => target.waitForFunction(open => getComputedStyle(document.querySelector('aside.demo-qr > div.demo-qr-card')).visibility === (open ? 'visible' : 'hidden'), open);
+  await check('header: Start over only, no QR', async () => {
+    for (const [hash, ready] of [['#v=tour&sc=0', view => scene(view, 0)], ['#v=tour&sc=3', view => scene(view, 3)], ['#v=explore', view => bench(view)]]) {
+      const view = await openAt(hash);
+      try {
+        await ready(view);
+        assert.deepEqual(await view.locator('header.app-header .header-actions > *').evaluateAll(list => list.map(element => element.textContent.trim())), ['Start over'], hash);
+        assert.equal(await view.locator('header.app-header .qr, .header-qr, .phone-button, dialog.phone-panel, .kiosk-qr').count(), 0, hash);
+      } finally {await view.close();}
+    }
+  });
+  await check('demo QR card: collapsed, opens on hover, a click pins it, Esc or a second click unpins, Tab opens it', async () => {
+    const view = await openAt('#v=tour&sc=1');
+    try {
+      await scene(view, 1);
+      const aside = view.getByRole('complementary', {name:'Try the demo!', exact:true});
+      assert.ok(await aside.evaluate(element => element.matches('aside.demo-qr')));
+      const tab = aside.locator('button.demo-qr-tab'), card = aside.locator('div.demo-qr-card#demo-qr-card');
+      assert.deepEqual(await tab.evaluate(button => [button.textContent, button.getAttribute('aria-expanded'), button.getAttribute('aria-controls')]), ['Try the demo!', 'false', 'demo-qr-card']);
+      // The card's QR carries the demo address, 260 px wide here; the link names it.
+      const qr = card.locator('div.qr');
+      assert.deepEqual([await qr.getAttribute('role'), await qr.getAttribute('aria-label')], ['img', 'QR code for the Cornac Workbench']);
+      await qr.locator('svg').waitFor({state:'attached'});
+      await encodes(qr, demoUrl);
+      const link = card.locator('a');
+      assert.deepEqual([await link.textContent(), await link.getAttribute('href')], ['cornac-workbench.preferred.ai', demoUrl]);
+      // Bottom-right corner, collapsed at first; the hidden card does not catch the pointer.
+      const corner = await tab.evaluate(button => {const box = button.getBoundingClientRect(); return [innerWidth - box.right, innerHeight - box.bottom];});
+      assert.ok(corner.every(gap => gap >= 16 && gap <= 32), String(corner));
+      assert.equal(await cardShown(view), false);
+      assert.equal(await aside.evaluate(element => element.classList.contains('is-open')), false);
+      const hit = await card.evaluate(element => {const box = element.getBoundingClientRect();
+        return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('.demo-qr') ? 'card' : 'page';});
+      assert.equal(hit, 'page');
+      // Hover opens it and it stays open while the pointer crosses the gap onto the card; leaving closes it.
+      await tab.hover();
+      await cardIs(view, true);
+      const box = await card.boundingBox();
+      assert.ok(Math.abs((await qr.boundingBox()).width - 260) <= 1);
+      await view.mouse.move(box.x + box.width / 2, box.y + box.height + 4);
+      await view.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {steps:4});
+      await view.waitForTimeout(300);
+      assert.ok(await cardShown(view), 'open over the card');
+      await view.mouse.move(100, 400);
+      await cardIs(view, false);
+      // A click pins it; Esc unpins it and moves focus off the tab.
+      await tab.click();
+      await view.mouse.move(100, 400);
+      await view.waitForTimeout(300);
+      assert.ok(await cardShown(view), 'pinned');
+      assert.deepEqual([await tab.getAttribute('aria-expanded'), await aside.evaluate(element => element.classList.contains('is-open'))], ['true', true]);
+      await view.keyboard.press('Escape');
+      await cardIs(view, false);
+      assert.deepEqual([await tab.getAttribute('aria-expanded'), await view.evaluate(() => document.querySelector('.demo-qr').contains(document.activeElement))], ['false', false]);
+      // A second click unpins it too.
+      await tab.click();
+      await tab.click();
+      await view.mouse.move(100, 400);
+      await cardIs(view, false);
+      assert.equal(await tab.getAttribute('aria-expanded'), 'false');
+      // Tab from the control before it opens it, and the card's link is reachable; a mouse click alone does not open it.
+      await view.evaluate(() => {
+        const tab = document.querySelector('.demo-qr-tab');
+        const before = [...document.querySelectorAll('a[href], button, input, select, [tabindex]:not([tabindex="-1"])')].filter(element => !element.closest('.demo-qr')
+          && element.checkVisibility({visibilityProperty:true}) && !element.disabled && element.compareDocumentPosition(tab) & Node.DOCUMENT_POSITION_FOLLOWING);
+        before.at(-1).focus();
+      });
+      await view.keyboard.press('Tab');
+      assert.equal(await view.evaluate(() => document.activeElement.className), 'demo-qr-tab');
+      await cardIs(view, true);
+      await view.keyboard.press('Shift+Tab');
+      assert.equal(await view.evaluate(() => document.activeElement.closest('.demo-qr-card') ? document.activeElement.textContent : null), 'cornac-workbench.preferred.ai');
+      assert.ok(await cardShown(view), 'open while its link has focus');
+      await view.evaluate(() => document.activeElement.blur());
+      await cardIs(view, false);
+    } finally {await view.close();}
+    // The workbench has the same card.
+    const bench0 = await openAt('#v=explore');
+    try {
+      await bench(bench0);
+      await encodes(bench0.locator('aside.demo-qr .qr'), demoUrl);
+      assert.equal(await cardShown(bench0), false);
+      await bench0.locator('button.demo-qr-tab').hover();
+      await cardIs(bench0, true);
+    } finally {await bench0.close();}
+    // Below 900 px the card and its tab are hidden.
+    for (const width of [390, 899]) {
+      const small = await openAt('#v=tour&sc=1', {viewport:{width, height:844}});
+      try {
+        await scene(small, 1);
+        assert.equal(await small.locator('aside.demo-qr').count(), 1, String(width));
+        assert.equal(await small.locator('aside.demo-qr').isVisible(), false, String(width));
+      } finally {await small.close();}
+    }
+  });
+  await check('footnote: pre-computed from step 4 on and in the workbench', async () => {
+    const fresh = await openAt('#v=tour&sc=0');
     try {
       const footnote = () => fresh.locator('.journey-footnote').textContent();
       const plain = 'Purchase histories from Amazon Beauty (2014).', long = `${plain} Recommendations were pre-computed.`;
+      await scene(fresh, 0);
+      assert.equal(await footnote(), plain, 'step 0');
       for (const n of [1, 2, 3, 4, 5]) {
-        if (n > 1) await fresh.getByRole('button', {name:'Next', exact:true}).click();
+        await fresh.getByRole('button', {name:'Next', exact:true}).click();
         await scene(fresh, n);
         assert.equal(await footnote(), n <= 3 ? plain : long, `step ${n}`);
       }
       await fresh.locator('section.s5-more button[data-action="explore"]').click();
-      await at(fresh, 'Choice 1 of 2');
+      await bench(fresh);
       assert.equal(await footnote(), long);
     } finally {await fresh.close();}
   });
-  await check('Skip tour opens explore; Back to the tour returns', async () => {
+  await check('Skip tour opens the workbench with its H1 focused; Back to the tour returns', async () => {
     await page.getByRole('button', {name:'Skip tour', exact:true}).click();
-    await at(page, 'Choice 1 of 2');
+    await bench(page, pair, root.history);
     assert.match(await page.evaluate(() => location.hash), /&v=explore$/);
+    assert.deepEqual(await focused(page), ['H1', heading]);
+    // Top to bottom: title row, settings, the reveal line, step 4's add-items view, scores.
+    assert.deepEqual(await page.locator('.wb > *').evaluateAll(list => list.map(element => `${element.tagName.toLowerCase()}${element.className ? `.${element.className}` : ''}`)),
+      ['div.wb-title', 'section.wb-settings', 'p.wb-reveal', 'h2', 'div.s4', 'section.wb-scores']);
+    assert.deepEqual(await page.locator('.wb-title > *').evaluateAll(list => list.map(element => [element.tagName, element.textContent])), [['H1', heading], ['BUTTON', 'Back to the tour']]);
+    assert.equal(await page.getByRole('group', {name:'Settings', exact:true}).count(), 1);
+    assert.deepEqual(await page.locator('section.wb-settings > div.wb-selects > label.wb-select').evaluateAll(labels => labels.map(label =>
+      [label.querySelector('span').textContent, label.querySelector('select').getAttribute('aria-label'), label.querySelector('select').value])),
+      [['Sequential model', 'Sequential model', 'SASRec'], ['Generative SID model', 'Generative SID model', 'LETTER'], ['History', 'History', seed], ['Resolver', 'Resolver', 'one_cosine']]);
+    assert.equal(await page.locator('p.wb-reveal').textContent(), 'LETTER ranks the next purchase #1. SASRec does not have it in its top 5.');
+    assert.equal(await page.locator('.wb > h2').textContent(), 'Add an item to the history and compare the new top 5.');
+    assert.equal(await page.locator('.wb .s4').getAttribute('data-phase'), '2');
+    assert.deepEqual(await page.locator('.wb .shelf-heading h3').allTextContents(), ['Sequential model', 'Generative SID model']);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(root.traditional));
+    assert.deepEqual(await shelf(page, 'sid-shelf'), ids(root.shelves.one_cosine));
     assert.equal(await page.getByTestId('sid-shelf').locator('article.is-target').getAttribute('data-item'), String(target));
-    assert.equal(await page.locator('.journey-question').textContent(), `Purchase history: ${root.history.length} items. Which item did this user buy next?`);
-    assert.equal(await page.locator('.reveal-line').textContent(), 'LETTER ranks the next purchase #1. SASRec does not have it in its top 5.');
-    assert.equal(await page.locator('#recommendations-heading').textContent(), 'Add an item to the history and compare the new top 5.');
-    assert.deepEqual(await page.locator('.shelf-heading h3').allTextContents(), ['Sequential model', 'Generative SID model']);
+    assert.equal(await page.locator('.wb .s4-rule').textContent(), 'Resolver: one item per SID, most similar.');
+    assert.deepEqual(await inputs(page), expectedInputs(pair, root.history, []));
+    assert.ok(await page.getByRole('button', {name:'Undo', exact:true}).isDisabled());
     await page.getByRole('button', {name:'Back to the tour', exact:true}).click();
     await scene(page, 1);
     assert.match(await page.evaluate(() => location.hash), /&v=tour&sc=1$/);
@@ -1103,110 +1514,291 @@ try {
     } finally {await fresh.close();}
   });
   await page.getByRole('button', {name:'Skip tour', exact:true}).click();
-  await at(page, 'Choice 1 of 2');
-  const model = side => page.locator(`.${side}-heading .model-name`).textContent();
-  // Re-selecting the current pair may not fire a change, so Restart stands in for it.
-  async function pick(row) {
-    if (await page.getByLabel('Model pair').inputValue() === row.id) await page.getByRole('button', {name:'Restart', exact:true}).click();
-    else await page.getByLabel('Model pair').selectOption(row.id);
-    await page.waitForFunction(name => document.querySelector('.semantic-heading .model-name')?.textContent === name, row.sid);
-    await at(page, 'Choice 1 of 2');
+  await bench(page, pair, root.history);
+  const benchmarksOf = Object.fromEntries(await Promise.all(manifest.pairs.map(async row => [row.id, await json(row.benchmark)])));
+  // The line above the lists: where each model ranks the next purchase of `history`.
+  function revealLine(row, start, history, strategy = 'one_cosine') {
+    const next = media.targets[history];
+    const [s, t] = [start.shelves[strategy], start.traditional].map(cards => ids(cards).indexOf(next) + 1);
+    return s && t ? `${row.sid} ranks the next purchase #${s}. ${row.traditional} ranks it #${t}.`
+      : s ? `${row.sid} ranks the next purchase #${s}. ${row.traditional} does not have it in its top 5.`
+      : t ? `${row.traditional} ranks the next purchase #${t}. ${row.sid} does not have it in its top 5.` : 'Neither model has the next purchase in its top 5.';
   }
-  await check('explore: eight pairs load with the policy menu', async () => {
+  // The four score tiles as [metric, `class:text` of each part of the label, value].
+  const tiles = target => target.locator('section.wb-scores > dl.wb-tiles > div').evaluateAll(list => list.map(tile =>
+    [tile.dataset.metric, [...tile.querySelector('dt').children].map(part => `${part.className}:${part.textContent}`), tile.querySelector('dd').textContent]));
+  const tilesOf = (row, metrics, strategy) => [['traditional', [`model-name traditional:${row.traditional}`, 'wb-tile-level:Item-level']],
+    [strategy, [`model-name semantic:${row.sid}`, 'wb-tile-level:Item-level', 'wb-tile-note:with the resolver above']],
+    ['sid', [`model-name semantic:${row.sid}`, 'wb-tile-level:SID-level']], ['cce', [`model-name semantic:${row.sid}`, 'wb-tile-level:CCE']]]
+    .map(([key, label]) => [key, label, metrics[key].recall.toFixed(3)]);
+  const undo = () => page.getByRole('button', {name:'Undo', exact:true}).click();
+  await check('workbench: eight pairs via the two model selects, with their scores', async () => {
     assert.equal(manifest.pairs.length, 8);
+    const options = label => select(page, label).locator('option').evaluateAll(list => list.map(option => [option.value, option.textContent]));
+    assert.deepEqual(await options('Sequential model'), [...new Set(manifest.pairs.map(row => row.traditional))].map(name => [name, name]));
+    assert.deepEqual(await options('Generative SID model'), [...new Set(manifest.pairs.map(row => row.sid))].map(name => [name, name]));
+    const singles = [];
     for (const row of manifest.pairs) {
-      await pick(row);
-      const start = await state(row.id, row.seeds[0].id);
-      assert.equal(await model('traditional'), row.traditional);
-      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(start.traditional));
-      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(start.shelves.one_cosine));
+      await pickPair(page, row);
+      const start = await state(row.id, seed), {metrics, query_count} = benchmarksOf[row.id];
+      const {p, h, s, t, v} = await params(page);
+      assert.deepEqual([p, h, s, t, v], [row.id, seed, 'one_cosine', undefined, 'explore'], row.id);
+      assert.deepEqual([await select(page, 'Sequential model').inputValue(), await select(page, 'Generative SID model').inputValue()], [row.traditional, row.sid]);
+      assert.deepEqual(await page.locator('.wb .shelf-heading .model-name').allTextContents(), [row.traditional, row.sid]);
+      assert.deepEqual(await history(page), root.history, row.id);
+      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(start.traditional), row.id);
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(start.shelves.one_cosine), row.id);
+      assert.deepEqual(await inputs(page), expectedInputs(row, start.history, []), row.id);
+      // The single-item note, only where every SID holds one item; there the four resolvers give the same list.
       const single = start.buckets.every(entry => entry.size === 1);
-      assert.equal(await page.getByLabel('SID to item strategy').count(), single ? 0 : 1, row.id);
-      assert.equal(await page.getByText('One item per SID', {exact:true}).count(), single ? 1 : 0, row.id);
+      if (single) singles.push(row.sid);
+      assert.deepEqual(await page.locator('section.wb-settings > p.wb-single').allTextContents(),
+        single ? [`Each of these ${row.sid} SIDs belongs to one item, so the resolver does not change the list.`] : [], row.id);
+      if (single) for (const key of manifest.strategies) assert.deepEqual(ids(start.shelves[key]), ids(start.shelves.one_cosine), `${row.id} ${key}`);
+      assert.equal(await page.locator('p.wb-reveal').textContent(), revealLine(row, start, seed), row.id);
+      assert.equal(await page.locator('section.wb-scores > h2#wb-scores-heading').textContent(), 'Scores for this pair');
+      assert.equal(await page.locator('section.wb-scores > p').textContent(), `Recall@5 on ${query_count.toLocaleString()} test users. They do not score the items you add.`);
+      assert.deepEqual(await tiles(page), tilesOf(row, metrics, 'one_cosine'), row.id);
     }
-    await pick(pair);
-    assert.deepEqual(await page.getByLabel('SID to item strategy').locator('option').allTextContents(),
-      ['One item per SID, most popular', 'One item per SID, most similar', 'All items per SID, most popular', 'All items per SID, most similar']);
-    for (const policy of manifest.strategies) {
-      await page.getByLabel('SID to item strategy').selectOption(policy);
-      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(root.shelves[policy]));
-      assert.deepEqual(await history(page), root.history);
-    }
-    await page.getByLabel('SID to item strategy').selectOption('one_cosine');
+    assert.deepEqual(singles, ['RPG', 'TIGER', 'RPG', 'TIGER']);
+    await pickPair(page, pair);
   });
-  await check('explore: bucket Inspector', async () => {
-    // Explore cards keep the SID link and show no item ID or SID pills.
-    assert.deepEqual(await page.getByTestId('sid-shelf').locator('.bucket-link').allTextContents(), root.shelves.one_cosine.map(card => `SID #${card.sid_rank} · ${count(card.bucket_size, 'item')} ↗`));
-    assert.equal(await page.locator('.journey-recommendations .id-pill, .journey-recommendations .sid-pill').count(), 0);
-    await page.getByTestId('sid-shelf').locator('.bucket-link').first().click();
-    await page.getByRole('heading', {name:'One SID, 1,643 items', exact:true}).waitFor();
-    assert.equal(await page.locator('.journey-inspector .sid-code').textContent(), `SID ${bucket.address.join('·')}`);
-    assert.equal(await page.locator('.journey-inspector .bucket-breakdown h3').textContent(), 'Categories in this SID');
-    const counts = await page.locator('.journey-inspector .bucket-breakdown li strong').allTextContents();
-    assert.equal(counts.reduce((sum, text) => sum + Number(text.replace(/\D/g, '')), 0), 1643);
-    assert.deepEqual(await page.locator('.bucket-columns h3').allTextContents(), ['Most popular', 'Most similar']);
-    assert.ok(await page.locator('.bucket-columns li').count() > 2);
-    await page.getByRole('button', {name:'Close bucket inspector'}).click();
-    assert.equal(await page.locator('.journey-inspector').count(), 0);
+  const hair = pair.seeds.find(row => row.label === 'Hair care, 9 purchases');
+  const hairRoot = await state(pair.id, hair.id);
+  await check('workbench: the History select keeps the pair and the resolver', async () => {
+    const picker = select(page, 'History');
+    assert.deepEqual(await picker.locator('option').evaluateAll(list => list.map(option => [option.value, option.textContent])), pair.seeds.map(row => [row.id, row.label]));
+    assert.equal(await picker.inputValue(), seed);
+    await picker.selectOption({label:hair.label});
+    await bench(page, pair, hairRoot.history);
+    const {p, h, s, t, v} = await params(page);
+    assert.deepEqual([p, h, s, t, v], [pair.id, hair.id, 'one_cosine', undefined, 'explore']);
+    assert.equal(hairRoot.history.length, 9);
+    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(hairRoot.traditional));
+    assert.deepEqual(await shelf(page, 'sid-shelf'), ids(hairRoot.shelves.one_cosine));
+    assert.deepEqual(await inputs(page), expectedInputs(pair, hairRoot.history, []));
+    assert.equal(await page.locator('p.wb-reveal').textContent(), revealLine(pair, hairRoot, hair.id));
+    assert.equal(await page.locator('.wb-title > h1').textContent(), heading);
   });
-  await check('explore: two items that share a SID', async () => {
-    const step = page.getByTestId('same-sid-step');
-    assert.equal(await step.locator('h2').textContent(), 'Two items, one SID');
-    assert.equal(await step.locator('.code-pill').textContent(), `SID ${probe.address.join('·')} · 1,643 items`);
-    assert.equal(await step.locator('p').textContent(), "Add either one. LETTER predicts the same 5 SIDs after either item; SASRec's top 5 differs between them.");
-    await step.getByRole('button', {name:`Add ${short(probe.items[0])}`, exact:true}).click();
-    await at(page, 'Choice 2 of 2');
-    const picked = await state(pair.id, root.next[String(probe.items[0])]);
-    assert.equal((await history(page)).at(-1), probe.items[0]);
-    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(picked.traditional));
-    await step.getByRole('button', {name:`Add ${short(probe.items[1])} instead`, exact:true}).click();
-    await page.waitForFunction(item => document.querySelector('.journey-timeline li:last-child')?.dataset.item === item, String(probe.items[1]));
-    await at(page, 'Choice 2 of 2');
-    assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(swapped.traditional));
-    assert.notDeepEqual(ids(swapped.traditional), ids(picked.traditional));
-    assert.ok(codesDiff(picked, swapped).same);
-    const result = `SASRec: ${itemsPhrase(shelfDiff(ids(root.traditional), ids(swapped.traditional)))}. LETTER: ${sidsPhrase(codesDiff(root, swapped))}.`;
-    assert.equal(await step.locator('p').textContent(), result);
-    assert.equal(await page.locator('.change-line > p').textContent(), result);
-    await page.getByRole('button', {name:'Restart', exact:true}).click();
-    await at(page, 'Choice 1 of 2');
-  });
-  await check('explore: Save and Replay; a tampered file is rejected', async () => {
+  await check('workbench: a model change keeps h= and drops t=', async () => {
     await choose(page, 'traditional-shelf');
-    await at(page, 'Choice 2 of 2');
-    const saved = await history(page);
-    const waiting = page.waitForEvent('download'); await page.getByRole('button', {name:'Save journey', exact:true}).click();
-    const download = await waiting; const file = path.join(output, download.suggestedFilename()); await download.saveAs(file);
-    await page.getByRole('button', {name:'Restart', exact:true}).click();
-    await at(page, 'Choice 1 of 2');
-    await page.getByLabel('Journey replay file').setInputFiles(file);
-    await page.getByRole('status').filter({hasText:/Journey restored/}).waitFor();
-    await at(page, 'Choice 2 of 2');
-    assert.deepEqual(await history(page), saved);
-    const corrupted = JSON.parse(await readFile(file, 'utf8')); corrupted.history[0] = -1;
-    const bad = path.join(output, 'tampered.json'); await writeFile(bad, JSON.stringify(corrupted));
-    await page.getByLabel('Journey replay file').setInputFiles(bad);
-    await page.getByRole('alert').filter({hasText:/Replay failed/}).waitFor();
-    await page.getByLabel('Journey replay file').setInputFiles(file);
-    await page.getByRole('alert').waitFor({state:'detached'});
-    await page.getByRole('status').filter({hasText:/Journey restored/}).waitFor();
-    assert.deepEqual(await history(page), saved);
+    await page.waitForFunction(n => document.querySelectorAll('.wb .journey-timeline li[data-item]').length === n, hairRoot.history.length + 1);
+    await bench(page, pair);
+    assert.match(await page.evaluate(() => location.hash), new RegExp(`[#&]h=${hair.id}&s=one_cosine&t=[^&,]+&`));
+    assert.equal(await page.locator('p.wb-reveal').count(), 0);
+    for (const [label, id] of [['Generative SID model', 'sasrec-diffgrm'], ['Sequential model', 'bert-mlm-diffgrm']]) {
+      const row = manifest.pairs.find(entry => entry.id === id), start = await state(id, hair.id);
+      await select(page, label).selectOption(label === 'Sequential model' ? row.traditional : row.sid);
+      await bench(page, row, hairRoot.history);
+      const {p, h, s, t, v} = await params(page);
+      assert.deepEqual([p, h, s, t, v], [id, hair.id, 'one_cosine', undefined, 'explore'], id);
+      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(start.traditional), id);
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(start.shelves.one_cosine), id);
+      assert.equal(await page.locator('p.wb-reveal').textContent(), revealLine(row, start, hair.id), id);
+      assert.ok(await page.getByRole('button', {name:'Undo', exact:true}).isDisabled(), id);
+    }
+    await pickPair(page, pair);
+    await select(page, 'History').selectOption(seed);
+    await bench(page, pair, root.history);
   });
-  await check('explore: Details shows the chart and the table', async () => {
-    const toggle = page.getByRole('button', {name:'Details', exact:true});
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('.journey-metrics').count(), 0);
-    await toggle.click();
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
-    await page.getByRole('rowheader', {name:'LETTER · SID', exact:true}).waitFor();
-    assert.ok(await page.locator('.journey-metrics').isVisible());
-    await page.locator('.recall-chart svg').waitFor();
-    assert.deepEqual(await page.locator('.chart-legend li').allTextContents(), ['Item', 'SID', 'CCE', 'SID models: One per SID · History cosine']);
-    // DIGER appears on step 5 only.
-    const rows = await chartRows(page);
-    assert.equal(rows.length, 6);
-    assert.ok(rows.every(([name]) => name !== 'DIGER'));
-    assert.equal(await page.locator('.recall-chart svg path').count(), 2 + 4 * 3);
+  await check('workbench: the Resolver select changes the SID list and the resolver line', async () => {
+    const picker = select(page, 'Resolver');
+    assert.deepEqual(await picker.locator('option').evaluateAll(list => list.map(option => [option.value, option.textContent])), manifest.strategies.map(key => [key, resolvers[key]]));
+    assert.equal(await picker.inputValue(), 'one_cosine');
+    const {metrics} = benchmarksOf[pair.id];
+    for (const key of [...manifest.strategies.filter(key => key !== 'one_cosine'), 'one_cosine']) {
+      await picker.selectOption(key);
+      await page.waitForFunction(([text, key]) => document.querySelector('.wb .s4-rule')?.textContent === text && location.hash.includes(`&s=${key}&`), [`Resolver: ${lower(resolvers[key])}.`, key]);
+      assert.equal((await params(page)).s, key);
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(root.shelves[key]), key);
+      assert.deepEqual(await page.getByTestId('sid-shelf').locator('button.sid-pill').allTextContents(), root.shelves[key].map(card => card.address.join('·')), key);
+      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(root.traditional), key);
+      assert.deepEqual(await history(page), root.history, key);
+      assert.equal(await page.locator('p.wb-reveal').textContent(), revealLine(pair, root, seed, key), key);
+      assert.deepEqual(await tiles(page), tilesOf(pair, metrics, key), key);
+      if (key !== 'expand_popularity') continue;
+      // After an Add the SID list still follows the resolver.
+      const [item] = ids(root.shelves[key]), after = await state(pair.id, root.next[String(item)]);
+      await choose(page, 'sid-shelf');
+      await steered(page, 1);
+      assert.deepEqual(await history(page), [...root.history, item]);
+      assert.deepEqual(await shelf(page, 'sid-shelf'), ids(after.shelves[key]));
+      assert.deepEqual(await shelf(page, 'traditional-shelf'), ids(after.traditional));
+      assert.equal(await page.getByTestId('sid-shelf').locator('article.is-new').count(), shelfDiff(ids(root.shelves[key]), ids(after.shelves[key])).newCount);
+      await undo();
+      await steered(page, 0);
+    }
+  });
+  await check('workbench: a SID pill opens the SID panel under the lists', async () => {
+    const pills = page.getByTestId('sid-shelf').locator('button.sid-pill');
+    assert.deepEqual(await pills.allTextContents(), root.shelves.one_cosine.map(card => sidText(card.address)));
+    await pills.first().click();
+    const panel = page.locator('.wb .s4 > .s4-shelves + .s4-code');
+    await panel.waitFor();
+    assert.equal(await panel.locator('h2').textContent(), 'One SID, 1,643 items');
+    assert.equal(await panel.locator('.s4-code-pill').textContent(), `SID ${bucket.address.join('·')}`);
+    assert.equal(await panel.locator('.bucket-breakdown h3').textContent(), 'Categories in this SID');
+    const rows = await panel.locator('.bucket-breakdown li').evaluateAll(lis => lis.map(li => [li.querySelector('span').textContent, Number(li.querySelector('strong').textContent.replace(/\D/g, ''))]));
+    assert.deepEqual(rows, media.buckets[pair.sid][bucket.address.join(',')].categories);
+    // It scrolls into view instead of opening at the bottom of the page.
+    await page.waitForFunction(() => {const box = document.querySelector('.wb .s4-code').getBoundingClientRect(); return box.top >= -1 && box.bottom <= innerHeight + 1;});
+    const card = root.shelves.one_cosine[1], size = root.buckets.find(entry => entry.address.join() === card.address.join()).size;
+    await pills.nth(1).click();
+    await page.waitForFunction(text => document.querySelector('.wb .s4-code .s4-code-pill')?.textContent === text, `SID ${card.address.join('·')}`);
+    assert.equal(await panel.locator('h2').textContent(), `One SID, ${count(size, 'item')}`);
+    await panel.getByRole('button', {name:'Close', exact:true}).click();
+    await panel.waitFor({state:'detached'});
+  });
+  await check('workbench: no two-items-one-SID comparison, no save, replay or share, none of the old controls', async () => {
+    const gone = ['.s4-back', '[data-testid="same-sid-step"]', '.s4-go', '.s4-same-line', '.s4-same-none', '.s4-picker', 'label.s4-pick',
+      '.bucket-link', 'details.full-name', '.strip-toggle', '.journey-inspector', '.journey-recap', '.journey-question',
+      '.wb-actions', '.s4-prefixes', 'input[type="file"]', '.share-qr'];
+    for (const row of [pair, ...['sasrec-rpg', 'bert-mlm-diffgrm'].map(id => manifest.pairs.find(entry => entry.id === id))]) {
+      await pickPair(page, row);
+      assert.deepEqual(await Promise.all(gone.map(selector => page.locator(selector).count())), gone.map(() => 0), row.id);
+      for (const text of ['Two items, one SID', 'How each model reads the history', 'Choose items to add', 'Details', 'Why?', 'Restart', 'Try another model', 'Full name',
+        'Save journey', 'Replay journey', 'Share'])
+        assert.equal(await page.getByText(text, {exact:true}).count(), 0, `${row.id}: ${text}`);
+      assert.equal(await page.getByText(/^Choice \d of \d$/).count(), 0, row.id);
+      assert.equal(await page.locator('h1').count(), 1, row.id);
+      assert.equal(await page.locator('.wb .s4').getAttribute('data-phase'), '2', row.id);
+    }
+    await pickPair(page, pair);
+  });
+  await check('workbench: two Adds give the recap and ten final suggestions; the reveal line only at depth 0', async () => {
+    const reveal = page.locator('p.wb-reveal');
+    assert.equal(await reveal.textContent(), revealLine(pair, root, seed));
+    await choose(page, 'traditional-shelf');
+    await steered(page, 1);
+    assert.equal(await reveal.count(), 0);
+    assert.deepEqual(await history(page), next.history);
+    assert.equal(await page.locator('.wb .s4-change').textContent(), `SASRec: ${itemsPhrase(shelfDiff(ids(root.traditional), ids(next.traditional)))}. LETTER: ${sidsPhrase(codesDiff(root, next))}.`);
+    assert.deepEqual(await inputs(page), expectedInputs(pair, root.history, [first]));
+    assert.match(await page.evaluate(() => location.hash), /[#&]t=[^&,]+&/);
+    await choose(page, 'sid-shelf');
+    await steered(page, 2);
+    assert.equal(await reveal.count(), 0);
+    assert.deepEqual(await history(page), last.history);
+    assert.equal(await page.locator('.wb .s4-bar .tour-takeaway').textContent(), recap);
+    assert.equal(await page.getByRole('button', {name:/^Final suggestion: /}).count(), 10);
+    assert.equal(await page.locator('.wb .choose-product:not(:disabled)').count(), 0);
+    for (const depth of [1, 0]) {
+      await undo();
+      await steered(page, depth);
+      assert.equal(await reveal.count(), depth ? 0 : 1);
+    }
+    assert.equal(await reveal.textContent(), revealLine(pair, root, seed));
+  });
+  await check('workbench: a reload or a link with the journey in its address restores it', async () => {
+    await choose(page, 'traditional-shelf');
+    await steered(page, 1);
+    await choose(page, 'sid-shelf');
+    await steered(page, 2);
+    const hash = await page.evaluate(() => location.hash);
+    assert.match(hash, new RegExp(`^#p=${pair.id}&h=${seed}&s=one_cosine&t=${root.next[String(first)]},${next.next[String(second)]}&(r=1&)?v=explore$`));
+    await page.reload();
+    await bench(page, pair, last.history);
+    assert.equal(await page.evaluate(() => location.hash), hash);
+    assert.deepEqual(await focused(page), ['H1', heading]);
+    assert.deepEqual(await inputs(page), expectedInputs(pair, root.history, [first, second]));
+    assert.equal(await page.locator('.wb .s4-bar .tour-takeaway').textContent(), recap);
+    assert.equal(await page.getByRole('button', {name:/^Final suggestion: /}).count(), 10);
+    // The same address without `v` opens the workbench too; a step that is not in the data falls back to the history.
+    const link = await openAt(hash.replace(/&v=explore$/, ''));
+    try {
+      await bench(link, pair, last.history);
+      assert.equal(await link.locator('.wb .s4-bar .tour-takeaway').textContent(), recap);
+    } finally {await link.close();}
+    const broken = await openAt(`#p=${pair.id}&h=${seed}&s=one_cosine&t=${root.next[String(first)]},0000&v=explore`);
+    try {
+      await bench(broken, pair, root.history);
+      assert.equal(await broken.locator('p.wb-reveal').textContent(), revealLine(pair, root, seed));
+    } finally {await broken.close();}
+    for (const depth of [1, 0]) {
+      await undo();
+      await steered(page, depth);
+    }
+  });
+  await check('workbench: All models chart with the DIGER row; Recall and NDCG table', async () => {
+    const panels = page.locator('section.wb-scores > details.wb-more');
+    assert.deepEqual(await panels.locator('summary').allTextContents(), ['All models', 'Recall and NDCG']);
+    assert.deepEqual(await panels.evaluateAll(list => list.map(element => element.open)), [false, false]);
+    await panels.nth(0).locator('summary').click();
+    const chart = panels.nth(0).locator('.recall-chart svg');
+    await chart.waitFor();
+    // One row per model with its Recall@5 values, as on step 5: item-level for the sequential models, then item-level
+    // under the current resolver, SID-level and CCE for each SID model, then DIGER.
+    const chartOf = strategy => {
+      const rows = new Map();
+      for (const row of manifest.pairs) if (!rows.has(row.traditional)) rows.set(row.traditional, [benchmarksOf[row.id].metrics.traditional]);
+      for (const row of manifest.pairs) if (!rows.has(row.sid)) rows.set(row.sid, [strategy, 'sid', 'cce'].map(key => benchmarksOf[row.id].metrics[key]));
+      rows.set('DIGER', ['item', 'sid', 'cce'].map(key => extra[0].metrics[key]));
+      return [...rows].map(([name, values]) => [name, values.map(value => value.recall.toFixed(3))]);
+    };
+    assert.deepEqual(await chartRows(page), chartOf('one_cosine'));
+    assert.equal(await chart.locator('path').count(), 2 + 4 * 3 + 3);
+    assert.deepEqual(await panels.nth(0).locator('.chart-legend li').allTextContents(), ['Item-level', 'SID-level', 'CCE', 'Resolver: One item per SID, most similar']);
+    assert.deepEqual(await panels.nth(0).locator('.chart-label.is-current').allTextContents(), ['SASRec', 'LETTER']);
+    await panels.nth(1).locator('summary').click();
+    const table = panels.nth(1).locator('table.wb-table');
+    await table.waitFor();
+    const read = () => table.locator('tr').evaluateAll(rows => rows.map(row => [...row.children].map(cell => cell.textContent)));
+    const {metrics} = benchmarksOf[pair.id];
+    const tableOf = key => [['Model', 'Level', 'Recall@5', 'NDCG@5'], ...[['traditional', pair.traditional, 'Item-level'],
+      [key, pair.sid, `Item-level, ${lower(resolvers[key])}`], ['sid', pair.sid, 'SID-level'], ['cce', pair.sid, 'CCE']]
+      .map(([metric, model, level]) => [model, level, metrics[metric].recall.toFixed(4), metrics[metric].ndcg.toFixed(4)])];
+    assert.deepEqual(await read(), tableOf('one_cosine'));
+    // Both follow the resolver.
+    await select(page, 'Resolver').selectOption('expand_cosine');
+    await page.waitForFunction(() => document.querySelector('.wb-scores .chart-policy')?.textContent === 'Resolver: All items per SID, most similar');
+    assert.deepEqual(await chartRows(page), chartOf('expand_cosine'));
+    assert.deepEqual(await read(), tableOf('expand_cosine'));
+    await select(page, 'Resolver').selectOption('one_cosine');
+    await page.waitForFunction(() => document.querySelector('.wb-scores .chart-policy')?.textContent === 'Resolver: One item per SID, most similar');
+    // Plain words: none of the old protocol text.
+    assert.doesNotMatch(await page.locator('section.wb-scores').textContent(), /frozen|study|compact|distinct|complete SIDs|protocol/i);
+    for (const summary of await panels.locator('summary').all()) await summary.click();
+  });
+  // Whether a page has fetched prefixes.json so far.
+  const fetchedPrefixes = target => target.evaluate(() => performance.getEntriesByType('resource').some(entry => new URL(entry.name).pathname === '/journeys/prefixes.json'));
+  // A resource timing buffer large enough for every request of a long walk.
+  const timing = () => performance.setResourceTimingBufferSize(5000);
+  await check('workbench: the SID panel has no prefix list; prefixes.json loads on step 0 only', async () => {
+    for (const id of ['sasrec-letter', 'sasrec-tiger', 'sasrec-rpg', 'sasrec-diffgrm']) {
+      const row = manifest.pairs.find(entry => entry.id === id), start = await state(id, seed);
+      const view = await openAt(`#p=${id}&v=explore`, {init:timing});
+      try {
+        await bench(view, row, start.history);
+        const pills = view.getByTestId('sid-shelf').locator('button.sid-pill');
+        for (const [i, card] of start.shelves.one_cosine.entries()) {
+          await pills.nth(i).click();
+          await view.waitForFunction(text => document.querySelector('.wb .s4-code .s4-code-pill')?.textContent === text, `SID ${card.address.join('·')}`);
+          assert.equal(await view.locator('.s4-prefixes, .s0-prefix-rows').count(), 0, `${id} ${card.item}`);
+        }
+        assert.equal(await fetchedPrefixes(view), false, id);
+      } finally {await view.close();}
+    }
+    // Steps 1-5 with step 4's SID panel open do not load it; step 0 does.
+    const tour = await openAt('#r=1&v=tour&sc=1', {init:timing});
+    try {
+      await scene(tour, 1);
+      for (const n of [2, 3, 4, 5]) {
+        await tour.getByRole('button', {name:'Next', exact:true}).click();
+        await scene(tour, n);
+        if (n !== 4) continue;
+        await tour.getByRole('button', {name:'Choose items to add', exact:true}).click();
+        await tour.getByTestId('sid-shelf').locator('button.sid-pill').first().click();
+        await tour.locator('.s4-code .bucket-breakdown').waitFor();
+        assert.equal(await tour.locator('.s4-prefixes').count(), 0);
+      }
+      assert.equal(await fetchedPrefixes(tour), false);
+      await tour.locator('.tour-steps button', {hasText:'Shopper'}).click();
+      await scene(tour, 1);
+      await tour.getByRole('button', {name:'Preliminaries', exact:true}).click();
+      await scene(tour, 0);
+      await tour.locator('ol.s0-prefix-rows > li').first().waitFor();
+      assert.equal(await fetchedPrefixes(tour), true);
+    } finally {await tour.close();}
   });
   await check('every pair lists the same six histories', async () => {
     const seeds = pair.seeds.map(row => row.id);
@@ -1214,9 +1806,43 @@ try {
     assert.deepEqual(pair.seeds.slice(0, 2).map(row => row.query_index), [145, 210]);
     for (const row of manifest.pairs) {
       assert.deepEqual(row.seeds.map(entry => entry.id), seeds, `${row.id} lists other histories`);
-      await pick(row);
-      assert.deepEqual(await page.getByLabel('Starting history').locator('option').evaluateAll(options => options.map(option => option.value)), seeds, row.id);
+      await pickPair(page, row);
+      assert.deepEqual(await select(page, 'History').locator('option').evaluateAll(options => options.map(option => option.value)), seeds, row.id);
     }
+  });
+  await check('prefixes.json: every 1-3 token prefix of the TIGER SIDs, with the measured statistic and the files it names', async () => {
+    assert.deepEqual(Object.keys(prefixes).sort(), ['prefixes', 'source', 'stats']);
+    assert.deepEqual(Object.keys(prefixes.prefixes), ['TIGER']);
+    assert.deepEqual(Object.keys(prefixes.source).sort(), ['TIGER', 'metadata']);
+    // Paths are relative to the Cornac checkout; the SID table is the one sids.json names.
+    const checkout = path.join(demo, '../..');
+    for (const [name, {file, sha256}] of Object.entries(prefixes.source))
+      assert.equal(createHash('sha256').update(await readFile(path.join(checkout, file))).digest('hex'), sha256, name);
+    assert.deepEqual(prefixes.source.TIGER, sids.source.TIGER);
+    // Step 0's statistic is the one measured over all items.
+    const similarity = JSON.parse(await readFile(path.join(checkout, 'runs/www2027-demo-journeys-2026-11-09/tour-r8/prefix/prefix_similarity.json'), 'utf8'));
+    const first = similarity.models.tiger.rows.find(row => row.prefix === 1);
+    assert.deepEqual(prefixes.stats, {items:similarity.items, first_token_same_top:first.top, random_same_top:similarity.random.top});
+    assert.deepEqual([prefixes.stats.items, percent(prefixes.stats.first_token_same_top), percent(prefixes.stats.random_same_top)], [12068, '84%', '23%']);
+    const table = sids.sids.TIGER;
+    const pictured = Object.keys(media.items).map(Number).filter(item => media.items[String(item)].image).sort((a, b) => a - b);
+    const prefixOf = (item, k) => table[String(item)].slice(0, k).join(',');
+    // Shown items per prefix, from sids.json.
+    const shown = {};
+    for (const sid of Object.values(table)) for (const k of [1, 2, 3]) {const key = sid.slice(0, k).join(','); shown[key] = (shown[key] ?? 0) + 1;}
+    assert.deepEqual(Object.keys(groups).sort(), Object.keys(shown).sort());
+    // Sizes count the whole catalog: at least the shown items, never more than the shorter prefix. Up to three
+    // categories, largest first, within the size; members are the first 12 pictured items with the prefix.
+    const bad = [];
+    for (const [key, row] of Object.entries(groups)) {
+      const k = key.split(',').length, parent = key.split(',').slice(0, -1).join(','), counts = row.top.map(([, n]) => n);
+      const members = pictured.filter(item => prefixOf(item, k) === key).slice(0, 12);
+      if (row.size < shown[key] || (parent && row.size > groups[parent].size) || !counts.length || counts.length > 3
+        || counts.some((n, i) => n < 1 || (i && n > counts[i - 1])) || counts.reduce((a, b) => a + b, 0) > row.size
+        || JSON.stringify(row.members) !== JSON.stringify(members)) bad.push(key);
+    }
+    assert.deepEqual(bad.slice(0, 5), []);
+    assert.equal(Object.keys(groups).length, 4316);
   });
   await check('sids.json gives every item in the SID model states its SID', async () => {
     const models = ['DiffGRM', 'LETTER', 'RPG', 'TIGER'];
@@ -1247,41 +1873,54 @@ try {
       ...[...document.querySelectorAll('article[data-item] h3, article[data-item] .full-name p:first-of-type, .journey-timeline li[data-item] p')].map(element => element.textContent),
       ...[...document.querySelectorAll('[data-item][title]')].map(element => element.title)]);
     for (const row of manifest.pairs) {
-      await pick(row);
+      await pickPair(page, row);
       for (const entry of row.seeds) {
-        await page.getByLabel('Starting history').selectOption(entry.id);
-        await at(page, 'Choice 1 of 2');
+        if (await select(page, 'History').inputValue() !== entry.id) await select(page, 'History').selectOption(entry.id);
+        await bench(page, row, (await state(row.id, entry.id)).history);
         const shown = await names();
         assert.ok(shown.length >= 30);
         assert.deepEqual(shown.filter(text => text.startsWith('Item ')), [], `${row.id} ${entry.id}`);
       }
     }
   });
-  await check('kiosk captions play scenes 1-3 and stop on input', async () => {
+  await check('kiosk captions play scenes 1-3 with the demo card open and stop on input', async () => {
     // The idle timer reads window.__kioskIdleMs when it (re)starts and keeps a preset value, so set it before load.
     const kiosk = await openAt('#k=1', {init:() => {window.__kioskIdleMs = 1000;}});
     try {
-      const caption = kiosk.locator('.kiosk-caption');
+      const caption = kiosk.locator('.kiosk-caption'), aside = kiosk.locator('aside.demo-qr');
       // The caption shows a frame before its scene change, so both are awaited together.
       const shown = (text, n) => kiosk.waitForFunction(([start, scene]) => document.querySelector('.kiosk-caption')?.textContent.startsWith(start)
         && document.querySelector('.tour')?.dataset.scene === scene, [text, String(n)], {timeout:10000});
       await shown("One user's purchase history.", 1);
+      // While the loop plays, the demo card is open.
+      await cardIs(kiosk, true);
+      assert.deepEqual([await aside.evaluate(element => element.classList.contains('is-open')), await aside.locator('button.demo-qr-tab').getAttribute('aria-expanded')], [true, 'true']);
+      await encodes(aside.locator('.qr'), demoUrl);
       await shown(`Next purchase: ${named(target)}.`, 1);
       await kiosk.locator(`.tour-pick.is-target[data-item="${target}"]`).waitFor();
       await shown('SASRec and LETTER, same history.', 2);
       await shown('One SID, 1,643 items.', 3);
       await kiosk.waitForFunction(() => document.querySelector('.s3-row .s3-pick')?.dataset.item === '695', null, {timeout:10000});
-      // A long idle spell after the input keeps the page with the visitor.
+      assert.ok(await cardShown(kiosk), 'open through the loop');
+      // A long idle spell after the input keeps the page with the visitor; the card closes with the loop.
       await kiosk.evaluate(() => {window.__kioskIdleMs = 60000;});
       await kiosk.locator('body').dispatchEvent('pointerdown');
       await caption.waitFor({state:'detached', timeout:2000});
+      await cardIs(kiosk, false);
+      assert.equal(await aside.locator('button.demo-qr-tab').getAttribute('aria-expanded'), 'false');
       const at3 = await kiosk.locator('.tour').getAttribute('data-scene');
       await kiosk.waitForTimeout(1500);
       assert.equal(await caption.count(), 0);
       assert.equal(await kiosk.locator('.tour').getAttribute('data-scene'), at3);
     } finally {await kiosk.close();}
+    // Below 900 px the loop plays without the card.
+    const small = await openAt('#k=1', {viewport:{width:390, height:844}, init:() => {window.__kioskIdleMs = 1000;}});
+    try {
+      await small.locator('.kiosk-caption').waitFor({timeout:10000});
+      assert.equal(await small.locator('aside.demo-qr').isVisible(), false);
+    } finally {await small.close();}
   });
-  await check('no visible text says "code", in the tour or in explore', async () => {
+  await check('no visible text says "code", in the tour or in the workbench', async () => {
     // Item names come from the catalog (e.g. "Youth Code"); Python and "QR code" labels are not visible text.
     const titles = Object.values(await json('catalog.json')).map(row => row.title).filter(title => /\bcodes?\b/i.test(title));
     const found = [];
@@ -1301,8 +1940,12 @@ try {
       }, titles);
       found.push(...hits.map(text => `${where}: ${text}`));
     };
-    const tour = await openAt('#v=tour&sc=1');
+    const tour = await openBasics('#v=tour&sc=0');
     try {
+      await tour.locator('ol.s0-prefix-rows > li > button.s0-show').first().click();
+      await tour.locator('.s0-prefix-items li[data-item]').first().waitFor();
+      await scan(tour, 'step 0');
+      await tour.getByRole('button', {name:'Try it on a real history', exact:true}).click();
       await tour.locator('.tour-pick').first().waitFor();
       await scan(tour, 'step 1');
       await tour.getByRole('button', {name:'Show the answer', exact:true}).click();
@@ -1332,38 +1975,65 @@ try {
       await tour.locator('.s5-qr svg').waitFor();
       await scan(tour, 'step 5');
       await tour.locator('section.s5-more button[data-action="explore"]').click();
-      await at(tour, 'Journey complete');
-      await tour.getByRole('button', {name:'Why?', exact:true}).click();
-      await tour.getByTestId('sid-shelf').locator('.bucket-link').first().click();
-      await tour.locator('.journey-inspector').waitFor();
-      await scan(tour, 'explore');
-      await tour.getByRole('button', {name:'Share', exact:true}).click();
-      await tour.getByRole('dialog').locator('.share-qr svg').waitFor();
-      await scan(tour, 'explore share');
+      await bench(tour, pair, last.history);
+      await tour.getByTestId('sid-shelf').locator('button.sid-pill').first().click();
+      await tour.locator('.wb .s4-code').waitFor();
+      for (const summary of await tour.locator('details.wb-more > summary').all()) await summary.click();
+      await tour.locator('.wb-scores .recall-chart svg').waitFor();
+      await tour.locator('.wb-scores table.wb-table').waitFor();
+      await scan(tour, 'workbench recap');
+      await tour.locator('button.demo-qr-tab').click();
+      await cardIs(tour, true);
+      await scan(tour, 'demo card');
       await tour.keyboard.press('Escape');
-      await tour.getByRole('button', {name:'Details', exact:true}).click();
-      await tour.locator('.journey-metrics').waitFor();
-      await scan(tour, 'explore details');
-      await tour.getByRole('button', {name:'Details', exact:true}).click();
-      await tour.locator('.journey-recap').getByRole('button', {name:'Restart journey', exact:true}).click();
-      await at(tour, 'Choice 1 of 2');
-      await tour.getByTestId('same-sid-step').getByRole('button', {name:`Add ${short(probe.items[0])}`, exact:true}).click();
-      await at(tour, 'Choice 2 of 2');
-      await scan(tour, 'explore same SID');
+      await tour.mouse.move(0, 0);
+      await cardIs(tour, false);
+      for (const depth of [1, 0]) {await tour.getByRole('button', {name:'Undo', exact:true}).click(); await steered(tour, depth);}
+      await scan(tour, 'workbench start');
     } finally {await tour.close();}
-    for (const hash of ['#p=sasrec-rpg&v=tour&sc=2', '#p=sasrec-rpg&v=tour&sc=3', '#p=sasrec-rpg&v=tour&sc=4',
-      `#p=sasrec-diffgrm&h=${pair.seeds[1].id}&v=tour&sc=3`, `#p=sasrec-diffgrm&h=${pair.seeds[1].id}&v=tour&sc=4`]) {
+    for (const hash of ['#p=sasrec-rpg&v=tour&sc=0', '#p=sasrec-rpg&v=tour&sc=2', '#p=sasrec-rpg&v=tour&sc=3', '#p=sasrec-rpg&v=tour&sc=4',
+      `#p=sasrec-diffgrm&h=${pair.seeds[1].id}&v=tour&sc=3`, `#p=sasrec-diffgrm&h=${pair.seeds[1].id}&v=tour&sc=4`, '#p=sasrec-rpg&v=explore', `#p=sasrec-diffgrm&h=${pair.seeds[1].id}&v=explore`]) {
       const other = await openAt(hash);
       try {
-        await other.locator('.tour-scene h1').waitFor();
+        await other.locator('.tour-scene h1, .wb-title h1').first().waitFor();
         await other.waitForLoadState('networkidle');
         await scan(other, hash);
       } finally {await other.close();}
     }
     assert.deepEqual(found, []);
   });
-  await check('no horizontal overflow on scenes 1-5 at 1440, 1024 and 390', async () => {
+  await check('no horizontal overflow on steps 0-5 and the workbench at 1440, 1024 and 390', async () => {
     for (const [width, height] of [[1440,1000],[1024,768],[390,844]]) {
+      // Step 0 on two histories (the longest group line on Fragrance); panels 2 and 3 sit side by side down to 900 px.
+      for (const hash of ['#v=tour&sc=0', `#h=${pair.seeds[5].id}&v=tour&sc=0`]) {
+        const basics = await openBasics(hash, {viewport:{width, height}});
+        try {
+          assert.ok(await fits(basics), `${width} step 0 ${hash}`);
+          // The first-token panel holds the most items.
+          await basics.locator('ol.s0-prefix-rows > li > button.s0-show').first().click();
+          await basics.locator('.s0-prefix-items li[data-item]').first().waitFor();
+          assert.ok(await fits(basics), `${width} step 0 ${hash} panel open`);
+          const [left, right] = await Promise.all(['section.s0-sequential', 'section.s0-sid'].map(selector => box(basics, selector)));
+          assert.ok(width > 900 ? Math.abs(left.top - right.top) <= 1 : right.top >= left.bottom, `${width} step 0 panels ${JSON.stringify({left, right})}`);
+        } finally {await basics.close();}
+      }
+      // The workbench at the start, with both score panels open, then after two Adds with the SID panel open.
+      const bench0 = await openAt('#v=explore', {viewport:{width, height}});
+      try {
+        await bench(bench0, pair, root.history);
+        assert.ok(await fits(bench0), `${width} workbench`);
+        for (const summary of await bench0.locator('details.wb-more > summary').all()) await summary.click();
+        await bench0.locator('.wb-scores .recall-chart svg').waitFor();
+        await bench0.locator('.wb-scores table.wb-table').waitFor();
+        assert.ok(await fits(bench0), `${width} workbench scores`);
+        await choose(bench0, 'traditional-shelf');
+        await steered(bench0, 1);
+        await choose(bench0, 'sid-shelf');
+        await steered(bench0, 2);
+        await bench0.getByTestId('sid-shelf').locator('button.sid-pill').first().click();
+        await bench0.locator('.wb .s4-code').waitFor();
+        assert.ok(await fits(bench0), `${width} workbench after two Adds`);
+      } finally {await bench0.close();}
       const view = await openAt('#v=tour&sc=1', {viewport:{width, height}});
       try {
         await view.locator('.tour-pick').first().waitFor();
@@ -1398,6 +2068,23 @@ try {
       } finally {await view.close();}
     }
   });
+  await check('video page: the one-minute tour, muted and looping, with its captions track', async () => {
+    await page.goto(new URL('video/', url).href);
+    const video = await page.locator('main video').evaluate(element => ({muted:element.muted, loop:element.loop, autoplay:element.autoplay,
+      poster:element.getAttribute('poster'), sources:[...element.querySelectorAll('source')].map(source => [source.getAttribute('src'), source.type]),
+      tracks:[...element.querySelectorAll('track')].map(track => [track.kind, track.getAttribute('src'), track.srclang, track.default])}));
+    assert.deepEqual(video, {muted:true, loop:true, autoplay:true, poster:'poster.jpg', sources:[['cornac-workbench-tour.mp4', 'video/mp4']],
+      tracks:[['captions', 'cornac-workbench-tour.vtt', 'en', false]]});
+    assert.equal(await page.getByRole('link', {name:'Open the demo'}).getAttribute('href'), '/');
+    // Playwright's Chromium has no H.264 decoder, so the duration comes from the MP4's movie header.
+    const mp4 = Buffer.from(await (await fetch(new URL('video/cornac-workbench-tour.mp4', url))).arrayBuffer());
+    const at = mp4.indexOf('mvhd');
+    const seconds = mp4[at + 4] === 1 ? Number(mp4.readBigUInt64BE(at + 28)) / mp4.readUInt32BE(at + 24) : mp4.readUInt32BE(at + 20) / mp4.readUInt32BE(at + 16);
+    assert.ok(seconds > 55 && seconds < 65, `video lasts ${seconds} s`);
+    assert.ok(mp4.includes('avc1') && at < mp4.indexOf('mdat'), 'H.264 with the movie header first');
+    const vtt = await (await fetch(new URL('video/cornac-workbench-tour.vtt', url))).text();
+    assert.ok(vtt.startsWith('WEBVTT') && vtt.includes("But 1,643 items share LETTER's SID."));
+  });
   await check('no API call, other-host request, failed response or console error', async () => {
     assert.deepEqual(errors, []);
     assert.deepEqual(failed, []);
@@ -1409,9 +2096,9 @@ try {
   // The build under test, web/dist unless the QA job built elsewhere.
   const dist = process.env.JOURNEY_DIST_DIR || path.join(web, 'dist');
   const tour = (await readdir(path.join(web, 'src/tour'))).filter(name => /\.(jsx|css)$/.test(name)).sort().map(name => `src/tour/${name}`);
-  const hashed = [...['src/Journeys.jsx','src/journeyParts.jsx','src/journeyExtras.jsx','src/journeys.css',...tour,'src/main.jsx','index.html'].map(name=>path.join(web,name)),
+  const hashed = [...['src/Journeys.jsx','src/journeyParts.jsx','src/journeyExtras.jsx','src/journeys.css','src/Explore.jsx','src/explore.css',...tour,'src/main.jsx','index.html'].map(name=>path.join(web,name)),
     ...['index.html',...(await readdir(path.join(dist,'assets'))).map(name=>`assets/${name}`)].map(name=>path.join(dist,name)),
-    path.join(web,'public/journeys/manifest.json'),path.join(dist,'journeys/manifest.json'),path.join(web,'public/journeys/media.json'),
+    path.join(web,'public/journeys/manifest.json'),path.join(dist,'journeys/manifest.json'),path.join(web,'public/journeys/media.json'),path.join(web,'public/journeys/prefixes.json'),
     ...['journeys-desktop.png','journeys-desktop-bert-mlm.png','journeys-mobile.png','journeys-mobile-viewport.png'].map(figure)];
   const files = {};
   for (const file of hashed) {
@@ -1426,7 +2113,7 @@ try {
     externalRequests:requests.filter(request=>new URL(request).origin!==new URL(url).origin),
     failedResponses:failed,
     pairs:manifest.pairs.map(row=>row.id),files,
-    scope:'Scripted browser checks of the five-scene tour and the explore screen of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study.'},null,2)+'\n');
+    scope:'Scripted browser checks of the tour (step 0 and the five steps) and the workbench of the static site with eight prepared Beauty model pairs; it is not a model benchmark or a user study.'},null,2)+'\n');
   console.log(JSON.stringify({passed:checks.length,firstRenderMs,choiceMs,receipt}));
 } catch (error) {
   await page.screenshot({path:path.join(output,'failure.png'),fullPage:true});

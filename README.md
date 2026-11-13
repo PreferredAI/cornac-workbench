@@ -5,6 +5,7 @@
 ### Quick Links
 
 [Live demo](https://cornac-workbench.preferred.ai) |
+[One-minute video](https://cornac-workbench.preferred.ai/video/) |
 [Cornac](https://github.com/PreferredAI/cornac) |
 [Cornac documentation](https://cornac.readthedocs.io/en/stable/index.html) |
 [Preferred.AI](https://preferred.ai/)
@@ -20,7 +21,7 @@
 
 A Semantic-ID model gives each item a short sequence of discrete tokens, its SID, and recommends by generating the SID of the next item. Several items can share one SID, so a generated SID does not say which item to show. In the Amazon Beauty data used here, the first SID that LETTER generates for the default history is shared by 1,643 items.
 
-The workbench makes this visible on real purchase histories. It opens on a five-step tour with SASRec and LETTER on the default history; *Next* and *Back*, or the step names at the top, move between steps, and *Skip tour* goes straight to the full workbench.
+The workbench makes this visible on real purchase histories. It opens on a five-step tour with SASRec and LETTER on the default history; *Next* and *Back*, or the step names at the top, move between steps, and *Skip tour* goes straight to the full workbench. *Preliminaries*, before step 1, shows how each kind of model reads a purchase history: a sequential model reads item IDs, and a generative SID model translates each item into a few semantic tokens, from general to specific. With TIGER, two items that share the first token are in the same top-level category 84% of the time, against 23% for two random items.
 
 1. **Shopper.** The user's 16 purchases are shown as photos, with the question "Which item did this user buy next? Pick one." and four item cards: the real next purchase, held out from the Amazon Beauty test set, and three other items from the two models' lists. After you pick one, or press *Show the answer*, the page marks the next purchase (a fine-liner brush) and your guess. A menu switches to the other five histories.
 2. **Two recommenders.** The two models' top 5 side by side. SASRec scores all 12,068 items; LETTER generates five SIDs, and each SID is shown as one of its items. SASRec's items show their item IDs and LETTER's their SIDs. For the default history, LETTER lists the brush first and SASRec does not list it.
@@ -28,9 +29,9 @@ The workbench makes this visible on real purchase histories. It opens on a five-
 4. **Next items.** First, how each model reads a history: items 88 and 610 have the same LETTER SID. Pick one, and it is added to each model's input, as an item ID for SASRec and as a SID for LETTER, with each model's next top 5 below. After either item LETTER reads the same input and generates the same five SIDs, while SASRec's two lists share no item. *Choose items to add* then lets you add up to two items from either list; a line says what changed, for example "SASRec: 4 of 5 items changed. LETTER: same 5 SIDs." after the brush, and *Undo* goes back.
 5. **Made with Cornac.** The Cornac experiment behind the screen in a few lines of Python, a Recall@5 chart of all models at the item level, the SID level and under CCE, one line per SID model on how it handles items that share a SID, `pip install cornac`, and a QR code for the Cornac repository. *Open the full workbench* opens the full screen, and *Start over* returns to step 1.
 
-*Open the full workbench* (or *Skip tour*) opens the full screen, where everything can be changed:
+*Open the full workbench* (or *Skip tour*) opens the full screen: the layout of step 4 with four menus above it (sequential model, Semantic-ID model, history, and resolver), so everything can be changed:
 
-- **The model pair and the history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The six starting histories are taken from the Amazon Beauty test set: two were chosen by hand, and four by a script so that the real next purchase is in the first list of LETTER only, of SASRec only, of both, or of neither.
+- **The models and the history.** Each pair puts a sequential model next to a Semantic-ID model, giving eight pairs. The six starting histories are taken from the Amazon Beauty test set: two were chosen by hand, and four by a script so that the real next purchase is in the first list of LETTER only, of SASRec only, of both, or of neither. Changing a model keeps the history.
 
   | Sequential models | Semantic-ID models |
   | :---------------: | :----------------: |
@@ -40,11 +41,10 @@ The workbench makes this visible on real purchase histories. It opens on a five-
   - *One item per SID*: one item for each generated SID, the most popular in the training data or the most similar to the history (Sentence-T5 embeddings).
   - *All items per SID*: all items of each SID in turn, ordered by the same two scores. A SID shared by many items can fill the whole list.
 
-  Each SID opens a panel with the items that share it, with their categories. When each SID on screen belongs to one item, as always in the TIGER pairs, there is no resolver menu.
-- **Save and replay.** *Save journey* downloads the session as a JSON file. *Replay journey* loads it again and rejects a file whose choices or provenance do not match the precomputed states.
-- **Share, or leave it running at a booth.** The address bar keeps the current journey, so reloading or sending the link reopens it. *Share* shows the link as a QR code. Kiosk mode is `#k=1` at the end of the address (for example <https://cornac-workbench.preferred.ai/#k=1>): after 60 seconds without input, the page plays the first three tour steps with captions until someone touches the screen or presses a key.
+  Each SID opens a panel with the items that share it, with their categories. When each SID on screen belongs to one item, as always in the TIGER pairs, a line says that the resolver does not change the list.
+- **Links, phones, and the booth.** The address bar keeps the current view, so reloading or sending the link reopens it. A *Try the demo!* card in the bottom-right corner shows a QR code of the site on hover; a click keeps it open. Kiosk mode is `#k=1` at the end of the address (for example <https://cornac-workbench.preferred.ai/#k=1>): after 60 seconds without input, the page plays the first three tour steps with captions and opens the QR card, until someone touches the screen or presses a key.
 
-The *Details* button shows the technical labels, a Recall@5 chart of all eight pairs, and, for each pair, Recall@5 and NDCG@5 on all 22,363 held-out test queries: item-level values for both models, and SID-level and collision-corrected (CCE) values for the Semantic-ID model.
+Below the lists, four tiles give the pair's Recall@5 on all 22,363 held-out test queries: item-level for both models, and SID-level and collision-corrected (CCE) for the Semantic-ID model. *All models* opens a Recall@5 chart of every model, and *Recall and NDCG* adds NDCG@5.
 
 
 ## Run it locally
@@ -88,7 +88,7 @@ The format of the exported files is described in [journeys.md](journeys.md).
 
 | Path | Contents |
 | :--- | :--- |
-| `web/` | React application (`web/src/`), browser tests (`web/tests/`), exported journeys (`web/public/journeys/`), and interface design notes (`web/design/`) |
+| `web/` | React application (`web/src/`), browser tests (`web/tests/`), exported journeys (`web/public/journeys/`), the one-minute video (`web/public/video/`), the scripts that capture the paper figures and record the video (`web/scripts/`), and interface design notes (`web/design/`) |
 | `journeys.py`, `prepare_journeys.py`, `select_seeds.py`, `journey-seeds.json`, `promote_journeys.py`, `journeys.md` | Journey export, the starting histories, the checks an export must pass before it replaces the published one, and the export format |
 | `prepare_media.py` | Product photos and short names (`web/public/journeys/thumbs/`, `media.json`) |
 | `fit_*_asset.py`, `run_*_grid.py`, `finalize_model_campaign.py`, `sasrec_asset.py`, `sasrec-beauty.sbatch`, `asset-run.md` | Training and model selection for BERT4Rec, TIGER, and SASRec |
@@ -113,7 +113,7 @@ This runs 17 journey tests and 11 diagnostic-view tests. The other tests need on
 Browser tests use [Playwright](https://playwright.dev/) with Chromium (`npx playwright install chromium` once). From `web/`:
 
 ```bash
-npm run test:journeys   # 58 checks; needs the static server on port 8110
+npm run test:journeys   # 71 checks; needs the static server on port 8110
 npm run test:browser    # 17 checks; needs serve_workbench.py on port 8080
 ```
 

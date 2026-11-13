@@ -1,5 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 import {ArrowLeft, ArrowRight} from 'lucide-react';
+import Scene0 from './Scene0.jsx';
 import Scene1 from './Scene1.jsx';
 import Scene2 from './Scene2.jsx';
 import Scene3 from './Scene3.jsx';
@@ -8,11 +9,12 @@ import Scene5 from './Scene5.jsx';
 import './tour.css';
 
 export const steps = ['Shopper', 'Two recommenders', 'SID to item', 'Next items', 'Made with Cornac'];
-const scenes = [Scene1, Scene2, Scene3, Scene4, Scene5];
+// Scene 0 (preliminaries) is not one of the five steps; step 1's Preliminaries button opens it.
+const scenes = [Scene0, Scene1, Scene2, Scene3, Scene4, Scene5];
 
 export default function Tour({scene, onScene, ...props}) {
   const frame = useRef(null);
-  const Scene = scenes[scene - 1];
+  const Scene = scenes[scene];
 
   useEffect(() => {
     scrollTo(0, 0);
@@ -25,7 +27,7 @@ export default function Tour({scene, onScene, ...props}) {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       if (event.target.closest?.('input, select, textarea, [contenteditable="true"], [role="radiogroup"], [role="tablist"], dialog')) return;
       if (event.key === 'ArrowRight' && scene < steps.length) onScene(scene + 1);
-      else if (event.key === 'ArrowLeft' && scene > 1) onScene(scene - 1);
+      else if (event.key === 'ArrowLeft' && scene > 0) onScene(scene - 1);
     }
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
@@ -33,7 +35,8 @@ export default function Tour({scene, onScene, ...props}) {
 
   return <div className="tour" ref={frame} data-scene={scene}>
     <nav className="tour-bar" aria-label="Tour">
-      <div className="tour-bar-side"><button className="button" disabled={scene === 1} onClick={() => onScene(scene - 1)}><ArrowLeft size={16} aria-hidden="true"/>Back</button></div>
+      <div className="tour-bar-side">{scene === 1 ? <button className="button" onClick={() => onScene(0)}>Preliminaries</button>
+        : scene > 1 ? <button className="button" onClick={() => onScene(scene - 1)}><ArrowLeft size={16} aria-hidden="true"/>Back</button> : null}</div>
       <ol className="tour-steps">{steps.map((label, i) =>
         <li key={label} className={i < scene ? 'is-reached' : undefined}>
           <button aria-current={i + 1 === scene ? 'step' : undefined} onClick={() => onScene(i + 1)}><i aria-hidden="true"/><span>{label}</span></button>
@@ -43,8 +46,8 @@ export default function Tour({scene, onScene, ...props}) {
         <button className="text-button tour-skip" onClick={props.onExplore}>Skip tour</button>
       </> : null}</div>
     </nav>
-    <section className="tour-scene" key={scene} aria-label={steps[scene - 1]}>
-      <p className="tour-eyebrow">Step {scene} of {steps.length}</p>
+    <section className="tour-scene" key={scene} aria-label={scene ? steps[scene - 1] : 'Preliminaries'}>
+      <p className="tour-eyebrow">{scene ? `Step ${scene} of ${steps.length}` : 'Preliminaries'}</p>
       <Scene {...props}/>
     </section>
   </div>;
