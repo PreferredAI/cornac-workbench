@@ -20,10 +20,11 @@ eval_method = NextItemEvaluation.from_splits(
     fmt="USIT", mode="last", semantic_id_metrics=True,
 )
 models = [
-    SASRec(embedding_dim=64, loss="bce", max_len=50),
+    SASRec(embedding_dim=128, loss="bce", max_len=50),
     TransformerRec(backbone="bert", objective="mlm", loss="ce"),
     TIGER(rqvae_codebook_size=256, n_beams=20),
-    LETTER(rqvae_codebook_size=256, cf_weight=0.02, n_beams=20),
+    LETTER(rqvae_codebook_size=256, n_beams=20,
+           cf_embeddings=cf_emb, cf_embedding_ids=item_ids),
 ]
 Experiment(eval_method=eval_method, models=models,
            metrics=[Recall(k=5), NDCG(k=5)]).run()`;

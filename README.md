@@ -83,6 +83,16 @@ Product photos and short names are added afterwards by [`prepare_media.py`](prep
 
 The format of the exported files is described in [journeys.md](journeys.md).
 
+### The paper's experiment
+
+[`experiment.py`](experiment.py) runs the Cornac experiment shown in the paper and on step 5 of the tour: `SASRec`, BERT4Rec (`TransformerRec` with the MLM objective), `TIGER` and `LETTER` on Amazon Beauty, with item-level, SID-level and CCE metrics. It contains the paper's code unchanged, plus the lines that load the data, embed the item text with Sentence-T5, and train the small SASRec whose item vectors `LETTER` uses. It needs Cornac 3.1 or later, `torch`, `transformers` and `sentence-transformers`, and takes several hours:
+
+```bash
+python experiment.py
+```
+
+It uses the settings printed in the paper, not the tuned checkpoints behind the workbench, so its numbers differ from Table 2.
+
 
 ## Repository layout
 
@@ -95,6 +105,7 @@ The format of the exported files is described in [journeys.md](journeys.md).
 | `assets/`, `prepare_replay.py`, `prepare_sasrec_replay.py` | Model settings, metrics, and inputs used by the training and diagnostic scripts |
 | `workbench.py`, `serve_workbench.py`, `prepare_workbench.py`, `workbench-assets/`, `workbench-api.md` | Diagnostic view and its data |
 | `qualification/`, `asset-contract.md` | How the diagnostic cases were selected, and the check of its metrics against Cornac's evaluator |
+| `experiment.py` | The Cornac experiment shown in the paper |
 | `test_journeys.py`, `test_workbench.py` | Python tests |
 | `*-validation.json`, `figures/` | Test results and screenshots |
 
@@ -130,7 +141,7 @@ They write their results to `journeys-validation.json` (and the screenshots in `
 
 ## Reproducing the exported data
 
-The export, training, and preparation scripts are kept exactly as they were run. Each script's SHA-256 hash is stored in the files it produced (`exporter_sha256` in the journey manifest, `workbench-assets/manifest.json`, `assets/provenance.json`), so editing a script would break that record. As a result, the scripts expect to sit at `papers/www2027-demo/` inside the authors' Cornac research tree and read model checkpoints and data splits from its `runs/` directory, which is not distributed. `prepare_workbench.py` and `prepare_replay.py` also contain paths on the authors' cluster. The workbench, the exported data, the diagnostic view, and the tests above run without them.
+The export, training, and preparation scripts are kept as they were run; the one later edit changed the wording of `release_status` in `prepare_journeys.py`. Each script's SHA-256 hash is stored in the files it produced (`exporter_sha256` in the journey manifest, `workbench-assets/manifest.json`, `assets/provenance.json`), so the journey manifest records the hash from before that edit. As a result, the scripts expect to sit at `papers/www2027-demo/` inside the authors' Cornac research tree and read model checkpoints and data splits from its `runs/` directory, which is not distributed. `prepare_workbench.py` and `prepare_replay.py` also contain paths on the authors' cluster. The workbench, the exported data, the diagnostic view, and the tests above run without them.
 
 For the same reason, the `release_status` and `redistribution` fields inside the exported files still carry the wording written at export time, before the public release. The license terms below apply.
 

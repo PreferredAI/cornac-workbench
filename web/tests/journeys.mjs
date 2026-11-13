@@ -28,7 +28,9 @@ const lower = text => text.charAt(0).toLowerCase() + text.slice(1);
 const root = await state(pair.id, seed);
 const target = media.targets[seed];
 const short = item => media.items[String(item)].short;
-const listing = (await readFile(path.join(demo, 'paper.tex'), 'utf8')).match(/\\begin\{verbatim\}\n([\s\S]*?)\n\\end\{verbatim\}/)[1];
+// The paper colours its listing with \PK{...}-style macros; strip them (they nest) to get the plain text.
+const plainListing = text => {for (let next; (next = text.replace(/\\P[KSNAM]\{([^{}]*)\}/g, '$1')) !== text;) text = next; return text;};
+const listing = plainListing((await readFile(path.join(demo, 'paper.tex'), 'utf8')).match(/\\begin\{Verbatim\}\[[^\n]*\]\n([\s\S]*?)\n\\end\{Verbatim\}/)[1]);
 const steps = ['Shopper', 'Two recommenders', 'SID to item', 'Next items', 'Made with Cornac'];
 await mkdir(output, {recursive:true});
 await mkdir(path.join(evidence, 'figures'), {recursive:true});

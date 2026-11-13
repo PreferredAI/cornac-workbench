@@ -363,7 +363,7 @@ def build_manifest(pairs, catalog_items):
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "totals": {"pairs": len(pairs), "states": sum(row["validation"]["states"] for row in pairs),
                        "transitions": sum(row["validation"]["transitions"] for row in pairs)},
-            "release_status": "Local research assets; public redistribution review pending"}
+            "release_status": "Public release; product data from Amazon Beauty 2014 under its original terms"}
 
 
 def main():

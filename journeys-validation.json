@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-13T10:51:45.205Z",
+  "date": "2026-11-13T14:34:41.689Z",
   "url": "http://127.0.0.1:8110",
   "browser": "156.0.8078.4",
   "browserPath": "Playwright Chromium; Browser plugin not available",
@@ -15,8 +15,8 @@
     "cores": 384,
     "node": "v24.15.0"
   },
-  "firstRenderMs": 134.59793199999996,
-  "choiceMs": 29.026389000000563,
+  "firstRenderMs": 144.91974399999998,
+  "choiceMs": 44.431539999999586,
   "checks": [
     {
       "name": "scene 1 shows the 16 purchases with photos",
@@ -362,8 +362,8 @@
       "sha256": "fa59ed51851c03c0a132a93e2908bedb2570bc81ec45e6544d56f0527423cb89"
     },
     "web/src/tour/Scene5.jsx": {
-      "bytes": 9635,
-      "sha256": "08e4bb36716e07436b7ecb325a8c6c4011ec4a58485aaf9dc990545ce110c3d1"
+      "bytes": 9680,
+      "sha256": "0886292ab01dc1ef3e4ef2a509b02eb10788034e106057dd518c57ab5607da8f"
     },
     "web/src/tour/Tour.jsx": {
       "bytes": 2802,
@@ -387,31 +387,31 @@
     },
     "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/index.html": {
       "bytes": 1644,
-      "sha256": "5eed0d37a186352b2e8ead29036e21c0839aeb86dd3f6a8a39b132b012cf982d"
+      "sha256": "5e400f67d65cf21f53585f8202db162a15ac4d0ec5c5c19598debbb386425a58"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/App-CwyGM-Ww.js": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/App-CtoRrQJB.js": {
       "bytes": 31905,
-      "sha256": "dd1df02cee6fa11ca99159491856308d4a59b60aeb0f4a610135deb2f0180b60"
+      "sha256": "9b83ed6b983eebf1d475e2b1bd485269f2c977ea59ee5d791a565c605c2653d1"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/browser-BerzQ1vn.js": {
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/browser-BqPJfZyR.js": {
       "bytes": 25776,
-      "sha256": "f4d8a426ae9e6e94af87e3b3b557492191f73b9a88c372b5d674d403eaff2575"
+      "sha256": "0152c66097b3bd13430cfb08e093de5c22cf9b59c68b8925140a5f0daa8ddb26"
     },
     "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/index-B7nelKry.css": {
       "bytes": 66889,
       "sha256": "ceefa496bc49fc0b37237dc74546d75a7e63c27d6206e4a84a1279a2e6c9ff10"
     },
-    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/index-CoTrahy-.js": {
-      "bytes": 284028,
-      "sha256": "bf95b964581072be3562109163f992551baaf36f6dc0af8af577ee9440aaa7db"
+    "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/assets/index-DHqHirCJ.js": {
+      "bytes": 284073,
+      "sha256": "ed1e45150c83b72a6b6be210cab9f8a5f5930d1a55aa608baab445c6bc74bd2d"
     },
     "web/public/journeys/manifest.json": {
-      "bytes": 23629,
-      "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
+      "bytes": 23647,
+      "sha256": "90da24f4a8a3d69674172d2b1dd22e5c401d94412356e81421702f08922ef9ed"
     },
     "../../runs/www2027-demo-journeys-2026-11-09/tour-r8/qa/dist/journeys/manifest.json": {
-      "bytes": 23629,
-      "sha256": "559f516cd479e1b3d05bf58e26b2e1db48c6f9795cfcc51c63ccfaf96a0326b2"
+      "bytes": 23647,
+      "sha256": "90da24f4a8a3d69674172d2b1dd22e5c401d94412356e81421702f08922ef9ed"
     },
     "web/public/journeys/media.json": {
       "bytes": 552719,
